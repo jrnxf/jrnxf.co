@@ -1,6 +1,6 @@
 import { SocialLinks } from 'app/components'
 
-import '~/styles/output.css'
+import '~/styles/global.css'
 
 export default function RootLayout({
   children,
