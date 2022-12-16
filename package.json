@@ -1,0 +1,50 @@
+{
+  "name": "jrnxf.co",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"next dev\" \"tailwindcss --input app/styles/input.css --output app/styles/output.css --watch\"",
+    "build": "tailwindcss --input app/styles/input.css --output app/styles/output.css && next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/node": "18.11.13",
+    "@types/react": "18.0.26",
+    "@types/react-dom": "18.0.9",
+    "encoding": "^0.1.13",
+    "eslint": "8.29.0",
+    "eslint-config-next": "13.0.6",
+    "graphql": "^16.5.0",
+    "graphql-request": "^4.3.0",
+    "next": "13.0.6",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tabler-icons-react": "^1.48.1",
+    "typescript": "4.9.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/line-clamp": "^0.4.0",
+    "@tailwindcss/typography": "^0.5.2",
+    "@trivago/prettier-plugin-sort-imports": "^3.2.0",
+    "autoprefixer": "^10.4.13",
+    "concurrently": "^7.6.0",
+    "postcss": "^8.4.19",
+    "prettier": "^2.8.1",
+    "tailwindcss": "^3.2.4",
+    "typescript-strict-plugin": "^2.1.0"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all",
+    "semi": false,
+    "importOrder": [
+      "^react$",
+      "<THIRD_PARTY_MODULES>",
+      "^[~/]",
+      "^[./]"
+    ],
+    "importOrderSeparation": true,
+    "importOrderSortSpecifiers": true
+  }
+}
