@@ -4,6 +4,8 @@ import { RepoCard } from '~/components/RepoCard'
 import { gh_gql_client } from '~/lib/graphql/client'
 import { GetUserFromGithub } from '~/lib/graphql/queries'
 
+export const revalidate = 30 // cache for 30 seconds
+
 async function getGhData() {
   return await gh_gql_client.request(GetUserFromGithub, {
     login: 'jrnxf',
