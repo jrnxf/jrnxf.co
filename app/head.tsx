@@ -1,4 +1,4 @@
-import { META_DEFAULTS } from '~/utils'
+import { META_DEFAULTS } from '~/utils/constants'
 
 export default function Head() {
   return (

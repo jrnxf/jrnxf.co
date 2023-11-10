@@ -1,21 +1,27 @@
-'use client'
-
-type Props = {
-  repo: any
+type RepoCardProps = {
+  repo: {
+    url: string
+    name: string
+    description: string
+    primaryLanguage: {
+      color: string
+      name: string
+    }
+    stargazerCount: number
+  }
 }
 
-export const RepoCard = ({ repo }: Props) => (
+export const RepoCard = ({ repo }: RepoCardProps) => (
   <a
     href={repo.url}
     rel="noopener noreferrer"
     target="_blank"
-    onClick={() => console.log(repo)}
     className="p-5 overflow-hidden rounded-lg shadow cursor-pointer bg-[#152528] focus:outline-none focus:ring-2 focus:ring-violet-400"
   >
     <div className="mb-2 text-lg font-semibold text-white truncate sm:text-xl">
       {repo.name}
     </div>
-    <div className="mt-1 text-xs font-medium text-zinc-300 line-clamp-1 sm:text-sm">
+    <div className="mt-1 text-xs font-medium tracking-wide text-zinc-300 line-clamp-1 sm:text-sm">
       {repo.description}
     </div>
     <div className="flex mt-2 text-xs font-medium sm:mt-1 sm:text-sm text-zinc-400">

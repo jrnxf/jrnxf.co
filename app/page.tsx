@@ -1,15 +1,13 @@
 import Image from 'next/image'
 
-import { RepoCard } from '~/components/RepoCard'
+import { RepoCard } from '~/components/repo-card'
 import { gh_gql_client } from '~/lib/graphql/client'
 import { GetUserFromGithub } from '~/lib/graphql/queries'
 
 export const revalidate = 30 // cache for 30 seconds
 
 async function getGhData() {
-  return await gh_gql_client.request(GetUserFromGithub, {
-    login: 'jrnxf',
-  })
+  return await gh_gql_client.request(GetUserFromGithub, { login: 'jrnxf' })
 }
 
 export default async function HomePage() {
@@ -20,6 +18,7 @@ export default async function HomePage() {
       <div className="flex flex-col items-center">
         <div className="flex items-center">
           <div className="relative mr-3 overflow-hidden rounded-lg h-14 w-14 sm:h-16 sm:w-16">
+            {/* @ts-ignore – this type is fine. i think there is a bug in the ts compiler atm */}
             <Image
               src={user.avatarUrl}
               alt={user.name}
@@ -44,6 +43,7 @@ export default async function HomePage() {
       <div className="mt-4 sm:mt-8">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 ">
           {user?.pinnedItems?.nodes.map((repo: any) => (
+            //  @ts-ignore – this type is fine. i think there is a bug in the ts compiler atm
             <RepoCard repo={repo} key={repo.id} />
           ))}
         </div>
