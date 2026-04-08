@@ -163,11 +163,14 @@ export function ShaderBackground() {
     const uTime = gl.getUniformLocation(program, 'uTime')
     const uResolution = gl.getUniformLocation(program, 'uResolution')
 
+    const DPR = Math.min(window.devicePixelRatio ?? 1, 1)
     const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      canvas.style.width = window.innerWidth + 'px'
-      canvas.style.height = window.innerHeight + 'px'
+      const w = window.innerWidth
+      const h = window.innerHeight
+      canvas.width = Math.round(w * DPR)
+      canvas.height = Math.round(h * DPR)
+      canvas.style.width = w + 'px'
+      canvas.style.height = h + 'px'
       gl.viewport(0, 0, canvas.width, canvas.height)
     }
 
