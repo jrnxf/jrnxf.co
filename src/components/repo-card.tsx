@@ -4,15 +4,15 @@ import {
   GitForkIcon,
   ArrowUpRight01Icon,
 } from '@hugeicons/core-free-icons'
-import type { Repo } from '@/data/repos'
+import type { GitHubRepo } from '@/lib/github'
 
-export function RepoCard({ repo }: { repo: Repo }) {
+export function RepoCard({ repo }: { repo: GitHubRepo }) {
   return (
     <a
       href={repo.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-black/40 p-4 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/[0.12] hover:bg-black/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-black/40 p-4 backdrop-blur-sm transition-[transform,border-color,background-color] duration-200 hover:-translate-y-1 hover:border-white/[0.12] hover:bg-black/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="truncate font-mono text-sm font-bold text-white">
@@ -21,7 +21,7 @@ export function RepoCard({ repo }: { repo: Repo }) {
         <HugeiconsIcon
           icon={ArrowUpRight01Icon}
           size={14}
-          className="mt-0.5 flex-shrink-0 text-neutral-600 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-white"
+          className="mt-0.5 flex-shrink-0 text-neutral-600 transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-white"
         />
       </div>
 
@@ -46,7 +46,7 @@ export function RepoCard({ repo }: { repo: Repo }) {
             </span>
           )}
         </div>
-        <span className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-neutral-400">
+        <span className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
           {repo.language}
         </span>
       </div>

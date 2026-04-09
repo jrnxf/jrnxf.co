@@ -1,25 +1,22 @@
-import { HugeiconsIcon } from '@hugeicons/react'
 import {
-  StarIcon,
-  GitForkIcon,
   ArrowUpRight01Icon,
+  GitForkIcon,
+  StarIcon,
 } from '@hugeicons/core-free-icons'
-import type { Repo } from '@/data/repos'
+import { HugeiconsIcon } from '@hugeicons/react'
+import type { GitHubRepo } from '@/lib/github'
 
-export function CardDesign4({ repo }: { repo: Repo }) {
+export function Card({ repo }: { repo: GitHubRepo }) {
   return (
     <a
       href={repo.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group relative block overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative block overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/80 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {/* Gradient top bar */}
       <div
         className="h-1"
-        style={{
-          background: `linear-gradient(90deg, ${repo.languageColor}, ${repo.languageColor}66)`,
-        }}
+        style={{ backgroundColor: repo.languageColor }}
       />
       <div className="px-4 py-3">
         <div className="flex items-start justify-between">
@@ -34,7 +31,7 @@ export function CardDesign4({ repo }: { repo: Repo }) {
           <HugeiconsIcon
             icon={ArrowUpRight01Icon}
             size={14}
-            className="ml-2 mt-0.5 flex-shrink-0 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-400"
+            className="ml-2 mt-0.5 flex-shrink-0 text-zinc-600 transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-400"
           />
         </div>
         <div className="mt-2.5 flex items-center justify-between">
