@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --breakpoint-xs: 480px;
+  --breakpoint-xs: 320px;
 
   --font-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
