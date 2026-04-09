@@ -7,8 +7,8 @@ const REPOS = ['thokr', 'gh-eco', 'fsrx', 'dot', 'une.haus']
 const CORS_ORIGIN = 'https://jrnxf.co' // also covers api.jrnxf.co since worker serves directly
 const CACHE_TTL = 600 // 10 minutes
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+export default <ExportedHandler<Env>>{
+  async fetch(request, env) {
     const origin = request.headers.get('Origin') ?? ''
     const allowedOrigins = [CORS_ORIGIN, 'http://localhost:5173']
     const corsOrigin = allowedOrigins.includes(origin) ? origin : CORS_ORIGIN
@@ -24,6 +24,7 @@ export default {
     }
 
     const url = new URL(request.url)
+
     if (url.pathname !== '/repos') {
       return new Response('Not found', { status: 404, headers: corsHeaders })
     }
@@ -34,8 +35,9 @@ export default {
           `https://api.github.com/repos/${OWNER}/${name}`,
           {
             headers: {
-              Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+              Authorization: `token ${env.GITHUB_TOKEN}`,
               'User-Agent': 'jrnxf-worker',
+              Accept: 'application/vnd.github.v3+json',
             },
           },
         )
@@ -60,4 +62,4 @@ export default {
       },
     })
   },
-} satisfies ExportedHandler<Env>
+}
