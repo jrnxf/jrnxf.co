@@ -10,9 +10,9 @@ import {
 const socialLinks = [
   { url: 'https://github.com/jrnxf', label: 'github', icon: GithubIcon },
   {
-    url: 'https://twitter.com/jrn_xf',
-    label: 'twitter',
-    icon: NewTwitterIcon,
+    url: 'https://linkedin.com/in/jrnxf',
+    label: 'linkedin',
+    icon: Linkedin01Icon,
   },
   {
     url: 'https://instagram.com/jrn.xf',
@@ -20,14 +20,14 @@ const socialLinks = [
     icon: InstagramIcon,
   },
   {
+    url: 'https://twitter.com/jrn_xf',
+    label: 'twitter',
+    icon: NewTwitterIcon,
+  },
+  {
     url: 'https://www.youtube.com/@jrnxf',
     label: 'youtube',
     icon: YoutubeIcon,
-  },
-  {
-    url: 'https://linkedin.com/in/jrnxf',
-    label: 'linkedin',
-    icon: Linkedin01Icon,
   },
 ]
 

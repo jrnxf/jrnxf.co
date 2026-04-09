@@ -9,18 +9,18 @@ const AVATAR_URL = '/avatar.jpg'
 
 function Sidebar() {
   return (
-    <aside className="flex flex-col items-center md:items-start md:text-left text-center">
+    <aside className="flex flex-col items-center text-center xs:flex-row xs:items-center xs:text-left xs:gap-5 md:flex-col md:items-start md:gap-0">
       <img
         src={AVATAR_URL}
         alt="Colby Thomas"
         width={260}
         height={260}
-        className="h-36 w-36 rounded-full border border-white/10 object-cover md:h-64 md:w-64 grayscale"
+        className="size-36 min-h-36 min-w-36 shrink-0 rounded-full border border-white/10 object-cover md:size-64 md:min-h-64 md:min-w-64 grayscale"
         loading="eager"
         fetchPriority="high"
       />
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-col xs:mt-0 md:mt-4">
         <h1 className="text-2xl font-bold tracking-tight text-white">
           Colby Thomas
         </h1>
@@ -28,23 +28,23 @@ function Sidebar() {
           href="https://github.com/jrnxf"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+          className="w-fit text-sm font-medium text-neutral-400 transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-md"
         >
           @jrnxf
         </a>
-      </div>
 
-      <p className="mt-4 text-sm leading-relaxed text-neutral-400">
-        should probably be sleeping
-      </p>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-400 md:mt-4">
+          should probably be sleeping
+        </p>
 
-      <div className="mt-2 flex items-center gap-1.5 text-sm text-neutral-400">
-        <HugeiconsIcon icon={Location01Icon} size={14} />
-        Vila Chã, Portugal
-      </div>
+        <div className="mt-1 flex items-center gap-1.5 text-sm text-neutral-400 md:mt-2">
+          <HugeiconsIcon icon={Location01Icon} size={14} />
+          Vila Chã, Portugal
+        </div>
 
-      <div className="mt-4">
-        <SocialLinks />
+        <div className="mt-2 md:mt-4">
+          <SocialLinks />
+        </div>
       </div>
     </aside>
   )
