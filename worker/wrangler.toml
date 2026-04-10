@@ -1,9 +1,0 @@
-name = "jrnxf-github-proxy"
-main = "src/index.ts"
-compatibility_date = "2024-12-01"
-workers_dev = true
-
-# Custom domain — wrangler creates the DNS record + SSL cert automatically
-[[routes]]
-pattern = "api.jrnxf.co"
-custom_domain = true

@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react';
 
 const VERTEX = `#version 300 es
 in vec2 position;
 void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 }
-`
+`;
 
 const FRAGMENT = `#version 300 es
 precision highp float;
@@ -102,109 +102,105 @@ void main() {
   float v = clamp(intensity + grain, 0.0, 1.0);
   fragColor = vec4(vec3(v), 1.0);
 }
-`
+`;
 
 function createShader(
   gl: WebGL2RenderingContext,
   type: number,
   source: string,
 ): WebGLShader | null {
-  const shader = gl.createShader(type)
-  if (!shader) return null
-  gl.shaderSource(shader, source)
-  gl.compileShader(shader)
+  const shader = gl.createShader(type);
+  if (!shader) return null;
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error('Shader compile error:', gl.getShaderInfoLog(shader))
-    gl.deleteShader(shader)
-    return null
+    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
   }
-  return shader
+  return shader;
 }
 
 export function ShaderBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
     const gl = canvas.getContext('webgl2', {
       antialias: false,
       alpha: false,
       powerPreference: 'high-performance',
-    })
-    if (!gl) return
+    });
+    if (!gl) return;
 
-    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX)
-    const fs = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT)
-    if (!vs || !fs) return
+    const vs = createShader(gl, gl.VERTEX_SHADER, VERTEX);
+    const fs = createShader(gl, gl.FRAGMENT_SHADER, FRAGMENT);
+    if (!vs || !fs) return;
 
-    const program = gl.createProgram()!
-    gl.attachShader(program, vs)
-    gl.attachShader(program, fs)
-    gl.linkProgram(program)
+    const program = gl.createProgram()!;
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program))
-      return
+      console.error('Program link error:', gl.getProgramInfoLog(program));
+      return;
     }
 
-    gl.useProgram(program)
+    gl.useProgram(program);
 
-    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
-    const buffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    const posLoc = gl.getAttribLocation(program, 'position')
-    gl.enableVertexAttribArray(posLoc)
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0)
+    const posLoc = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-    const uTime = gl.getUniformLocation(program, 'uTime')
-    const uResolution = gl.getUniformLocation(program, 'uResolution')
+    const uTime = gl.getUniformLocation(program, 'uTime');
+    const uResolution = gl.getUniformLocation(program, 'uResolution');
 
-    const DPR = Math.min(window.devicePixelRatio ?? 1, 1)
+    const DPR = Math.min(window.devicePixelRatio ?? 1, 1);
     const resize = () => {
-      const w = window.innerWidth
-      const h = window.innerHeight
-      canvas.width = Math.round(w * DPR)
-      canvas.height = Math.round(h * DPR)
-      canvas.style.width = w + 'px'
-      canvas.style.height = h + 'px'
-      gl.viewport(0, 0, canvas.width, canvas.height)
-    }
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.round(w * DPR);
+      canvas.height = Math.round(h * DPR);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
 
-    window.addEventListener('resize', resize)
-    resize()
+    window.addEventListener('resize', resize);
+    resize();
 
-    let animId = 0
-    const start = performance.now()
+    let animId = 0;
+    const start = performance.now();
 
     const animate = () => {
-      animId = requestAnimationFrame(animate)
-      const elapsed = (performance.now() - start) / 1000
-      gl.uniform1f(uTime, elapsed)
-      gl.uniform2f(uResolution, canvas.width, canvas.height)
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-    }
+      animId = requestAnimationFrame(animate);
+      const elapsed = (performance.now() - start) / 1000;
+      gl.uniform1f(uTime, elapsed);
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
 
-    animate()
+    animate();
 
     return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', resize)
-      gl.deleteProgram(program)
-      gl.deleteShader(vs)
-      gl.deleteShader(fs)
-      gl.deleteBuffer(buffer)
-    }
-  }, [])
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+      gl.deleteProgram(program);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      gl.deleteBuffer(buffer);
+    };
+  }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0"
-      aria-hidden="true"
-    />
-  )
+    <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0" aria-hidden="true" />
+  );
 }

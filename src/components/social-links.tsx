@@ -4,8 +4,8 @@ import {
   Linkedin01Icon,
   NewTwitterIcon,
   YoutubeIcon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 const socialLinks = [
   { url: 'https://github.com/jrnxf', label: 'github', icon: GithubIcon },
@@ -29,7 +29,7 @@ const socialLinks = [
     label: 'youtube',
     icon: YoutubeIcon,
   },
-]
+];
 
 export function SocialLinks() {
   return (
@@ -42,11 +42,10 @@ export function SocialLinks() {
           rel="noopener noreferrer"
           aria-label={`follow me on ${label}`}
           className="text-neutral-500 size-4 sm:size-5 transition-transform duration-200 hover:scale-110 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-md"
-
         >
           <HugeiconsIcon icon={icon} size="100%" strokeWidth={1.5} />
         </a>
       ))}
     </div>
-  )
+  );
 }

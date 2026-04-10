@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { ShaderBackground } from '@/components/particle-field'
-import { RepoCard } from '@/components/repo-card'
-import { SocialLinks } from '@/components/social-links'
-import { fetchPinnedRepos, type GitHubRepo } from '@/lib/github'
-import { Location01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import { useEffect, useState } from 'react';
+import { ShaderBackground } from '@/components/particle-field';
+import { RepoCard } from '@/components/repo-card';
+import { SocialLinks } from '@/components/social-links';
+import { fetchPinnedRepos, type GitHubRepo } from '@/lib/github';
+import { Location01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
-const AVATAR_URL = '/avatar.jpg'
+const AVATAR_URL = '/avatar.jpg';
 
 function Sidebar() {
   return (
@@ -22,9 +22,7 @@ function Sidebar() {
       />
 
       <div className="mt-4 flex flex-col xs:mt-0 lg:mt-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">
-          colby thomas
-        </h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-white">colby thomas</h1>
         <a
           href="https://github.com/jrnxf"
           target="_blank"
@@ -44,15 +42,15 @@ function Sidebar() {
         </div>
       </div>
     </aside>
-  )
+  );
 }
 
 export default function App() {
-  const [repos, setRepos] = useState<GitHubRepo[]>([])
+  const [repos, setRepos] = useState<GitHubRepo[]>([]);
 
   useEffect(() => {
-    fetchPinnedRepos().then(setRepos)
-  }, [])
+    void fetchPinnedRepos().then(setRepos);
+  }, []);
 
   return (
     <>
@@ -69,5 +67,5 @@ export default function App() {
         </main>
       </div>
     </>
-  )
+  );
 }

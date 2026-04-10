@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="vite-plus/client" />
 
-declare module '@fontsource/geist-sans/latin.css'
-declare module '@fontsource/geist-mono/latin.css'
+declare module '@fontsource/geist-sans/latin.css';
+declare module '@fontsource/geist-mono/latin.css';

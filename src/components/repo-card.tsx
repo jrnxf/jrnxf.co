@@ -1,10 +1,6 @@
-import { HugeiconsIcon } from '@hugeicons/react'
-import {
-  StarIcon,
-  GitForkIcon,
-  ArrowUpRight01Icon,
-} from '@hugeicons/core-free-icons'
-import type { GitHubRepo } from '@/lib/github'
+import { HugeiconsIcon } from '@hugeicons/react';
+import { StarIcon, GitForkIcon, ArrowUpRight01Icon } from '@hugeicons/core-free-icons';
+import type { GitHubRepo } from '@/lib/github';
 
 export function RepoCard({ repo }: { repo: GitHubRepo }) {
   return (
@@ -15,9 +11,7 @@ export function RepoCard({ repo }: { repo: GitHubRepo }) {
       className="group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-black/40 p-4 backdrop-blur-sm transition-[transform,border-color,background-color] duration-200 hover:-translate-y-1 hover:border-white/[0.12] hover:bg-black/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="truncate font-mono text-sm font-bold text-white">
-          {repo.name}
-        </h3>
+        <h3 className="truncate font-mono text-sm font-bold text-white">{repo.name}</h3>
         <HugeiconsIcon
           icon={ArrowUpRight01Icon}
           size={14}
@@ -32,11 +26,7 @@ export function RepoCard({ repo }: { repo: GitHubRepo }) {
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-xs text-neutral-300">
-            <HugeiconsIcon
-              icon={StarIcon}
-              size={12}
-              className="text-neutral-400"
-            />
+            <HugeiconsIcon icon={StarIcon} size={12} className="text-neutral-400" />
             {repo.stars}
           </span>
           {repo.forks && (
@@ -51,5 +41,5 @@ export function RepoCard({ repo }: { repo: GitHubRepo }) {
         </span>
       </div>
     </a>
-  )
+  );
 }
