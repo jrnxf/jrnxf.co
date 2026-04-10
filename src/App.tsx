@@ -2,10 +2,9 @@ import { ShaderBackground } from "@/components/particle-field";
 import { RepoCard } from "@/components/repo-card";
 import { SocialLinks } from "@/components/social-links";
 import type { GitHubRepo } from "@/lib/github";
-import { Location01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { MapPin } from "lucide-react";
 
-const AVATAR_URL = "/avatar.jpg";
+const AVATAR_URL = "/avatar.webp";
 
 function Sidebar() {
   return (
@@ -32,7 +31,7 @@ function Sidebar() {
         </a>
 
         <div className="mt-1 xs:text-xs flex items-center gap-1.5 text-sm text-neutral-400 xl:mt-2">
-          <HugeiconsIcon icon={Location01Icon} size={14} />
+          <MapPin size={14} />
           vila chã, portugal
         </div>
 

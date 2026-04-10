@@ -1,6 +1,5 @@
-import { ArrowUpRight01Icon, GitForkIcon, StarIcon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
-import type { GitHubRepo } from '@/lib/github';
+import { ArrowUpRight, GitFork, Star } from "lucide-react";
+import type { GitHubRepo } from "@/lib/github";
 
 export function Card({ repo }: { repo: GitHubRepo }) {
   return (
@@ -17,8 +16,7 @@ export function Card({ repo }: { repo: GitHubRepo }) {
             <h3 className="truncate text-sm font-bold text-white">{repo.name}</h3>
             <p className="mt-0.5 line-clamp-1 text-xs text-zinc-400">{repo.description}</p>
           </div>
-          <HugeiconsIcon
-            icon={ArrowUpRight01Icon}
+          <ArrowUpRight
             size={14}
             className="ml-2 mt-0.5 flex-shrink-0 text-zinc-600 transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-zinc-400"
           />
@@ -26,12 +24,12 @@ export function Card({ repo }: { repo: GitHubRepo }) {
         <div className="mt-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="flex items-center gap-1 text-xs font-medium text-zinc-300">
-              <HugeiconsIcon icon={StarIcon} size={12} className="text-amber-500/70" />
+              <Star size={12} className="text-amber-500/70" />
               {repo.stars}
             </span>
             {repo.forks && (
               <span className="flex items-center gap-1 text-xs text-zinc-500">
-                <HugeiconsIcon icon={GitForkIcon} size={12} />
+                <GitFork size={12} />
                 {repo.forks}
               </span>
             )}
