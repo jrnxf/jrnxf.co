@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { cloudflare } from '@cloudflare/vite-plugin';
 
 function fontDisplayOptional(): Plugin {
   return {
@@ -26,7 +27,7 @@ export default defineConfig({
       typeCheck: true,
     },
   },
-  plugins: [fontDisplayOptional(), react(), tailwindcss()],
+  plugins: [fontDisplayOptional(), react(), tailwindcss(), cloudflare()],
   resolve: {
     alias: {
       '@': new URL('./src', import.meta.url).pathname,

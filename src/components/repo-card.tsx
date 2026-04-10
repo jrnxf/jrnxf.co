@@ -1,6 +1,6 @@
-import { HugeiconsIcon } from '@hugeicons/react';
-import { StarIcon, GitForkIcon, ArrowUpRight01Icon } from '@hugeicons/core-free-icons';
 import type { GitHubRepo } from '@/lib/github';
+import { ArrowUpRight01Icon, GitForkIcon, StarIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 export function RepoCard({ repo }: { repo: GitHubRepo }) {
   return (
@@ -19,24 +19,24 @@ export function RepoCard({ repo }: { repo: GitHubRepo }) {
         />
       </div>
 
-      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-400">
+      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-400 truncate">
         {repo.description}
       </p>
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-1.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-xs text-neutral-300">
-            <HugeiconsIcon icon={StarIcon} size={12} className="text-neutral-400" />
+            <HugeiconsIcon icon={StarIcon} size={12} className="text-neutral-300" />
             {repo.stars}
           </span>
-          {repo.forks && (
+          {repo.forks > 0 && (
             <span className="flex items-center gap-1 text-xs text-neutral-500">
               <HugeiconsIcon icon={GitForkIcon} size={12} />
               {repo.forks}
             </span>
           )}
         </div>
-        <span className="rounded-full border border-white/[0.08] px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
+        <span className="rounded-full border border-white/8 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
           {repo.language}
         </span>
       </div>

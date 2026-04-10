@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vite build",
-    "preview": "vp preview",
+    "build": "vp build",
+    "preview": "vp build && vp preview",
     "prepare": "vp config",
     "check": "vp check"
   },
@@ -20,6 +20,7 @@
     "tailwind-merge": "^3.0.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.31.2",
     "@cloudflare/workers-types": "^4.20260410.1",
     "@fontsource/geist-mono": "^5.2.7",
     "@fontsource/geist-sans": "^5.2.5",
@@ -30,7 +31,8 @@
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vite-plus": "latest"
+    "vite-plus": "latest",
+    "wrangler": "^4.81.1"
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
