@@ -1,18 +1,20 @@
 {
   "name": "jrnxf.co",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "vp build",
-    "preview": "vp build && vp preview",
-    "prepare": "vp config",
-    "check": "vp check"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.1.1",
     "@hugeicons/react": "^1.1.6",
+    "@tanstack/react-router": "^1",
+    "@tanstack/react-start": "^1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.0.0",
@@ -20,28 +22,22 @@
     "tailwind-merge": "^3.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.31.2",
+    "@cloudflare/vite-plugin": "^1",
     "@cloudflare/workers-types": "^4.20260410.1",
     "@fontsource/geist-mono": "^5.2.7",
     "@fontsource/geist-sans": "^5.2.5",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^4.7.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vite-plus": "latest",
+    "vite": "^7",
     "wrangler": "^4.81.1"
-  },
-  "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   },
   "prettier": {
     "semi": false,
     "singleQuote": true,
     "trailingComma": "all"
-  },
-  "packageManager": "npm@11.12.1"
+  }
 }
