@@ -7,6 +7,11 @@ import geistSans500 from "@fontsource/geist-sans/latin-500.css?url";
 import geistSans600 from "@fontsource/geist-sans/latin-600.css?url";
 import geistSans700 from "@fontsource/geist-sans/latin-700.css?url";
 import geistMono700 from "@fontsource/geist-mono/latin-700.css?url";
+import geistSans400Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
+import geistSans500Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
+import geistSans600Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2?url";
+import geistSans700Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2?url";
+import geistMono700Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-700-normal.woff2?url";
 import { SHADER_BOOT_SCRIPT } from "@/components/particle-field";
 
 export const Route = createRootRoute({
@@ -49,6 +54,41 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: geistSans600 },
       { rel: "stylesheet", href: geistSans700 },
       { rel: "stylesheet", href: geistMono700 },
+      {
+        rel: "preload",
+        href: geistSans400Woff2,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: geistSans500Woff2,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: geistSans600Woff2,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: geistSans700Woff2,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        href: geistMono700Woff2,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+      },
       { rel: "preload", href: "/avatar.jpg", as: "image" },
       {
         rel: "icon",

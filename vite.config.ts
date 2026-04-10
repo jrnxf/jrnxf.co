@@ -7,9 +7,24 @@ import tailwindcss from "@tailwindcss/vite";
 function fontDisplayOptional(): Plugin {
   return {
     name: "font-display-optional",
+    enforce: "pre",
     transform(code, id) {
-      if (id.includes("@fontsource") && id.endsWith(".css")) {
+      // Strip ?url suffix for matching — Vite resolves the id with the query still attached
+      const cleanId = id.split("?")[0];
+      if (cleanId.includes("@fontsource") && cleanId.endsWith(".css")) {
         return code.replace(/font-display:\s*swap/g, "font-display: optional");
+      }
+    },
+    generateBundle(_, bundle) {
+      // Catch any emitted CSS assets that slipped through transform
+      for (const asset of Object.values(bundle)) {
+        if (
+          asset.type === "asset" &&
+          typeof asset.source === "string" &&
+          String(asset.fileName).endsWith(".css")
+        ) {
+          asset.source = asset.source.replace(/font-display:\s*swap/g, "font-display: optional");
+        }
       }
     },
   };
