@@ -3,19 +3,21 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 function fontDisplayOptional(): Plugin {
   return {
     name: 'font-display-optional',
     transform(code, id) {
       if (id.includes('@fontsource') && id.endsWith('.css')) {
-        return code.replace(/font-display:\s*swap/g, 'font-display: optional')
+        return code.replace(/font-display:\s*swap/g, 'font-display: optional');
       }
     },
-  }
+  };
 }
 
 export default defineConfig({
-  plugins: [fontDisplayOptional(), react(), tailwindcss()],
+  plugins: [fontDisplayOptional(), react(), tailwindcss(), cloudflare()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
