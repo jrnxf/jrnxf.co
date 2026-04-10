@@ -5,7 +5,7 @@ import type { GitHubRepo } from "@/lib/github";
 import { Location01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
-const AVATAR_URL = "/avatar.jpg";
+const AVATAR_URL = "/avatar.webp";
 
 function Sidebar() {
   return (
