@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from "react";
 
 const VERTEX = `#version 300 es
 in vec2 position;
@@ -104,6 +104,46 @@ void main() {
 }
 `;
 
+// Inline script that runs synchronously before React hydrates.
+// It boots the WebGL shader on the #dither-bg canvas so the first frame
+// is painted before any JS bundles finish loading.
+export const SHADER_BOOT_SCRIPT = `(function(){
+var c=document.getElementById('dither-bg');
+if(!c)return;
+var gl=c.getContext('webgl2',{antialias:false,alpha:false,powerPreference:'high-performance'});
+if(!gl)return;
+var VS=${JSON.stringify(VERTEX)};
+var FS=${JSON.stringify(FRAGMENT)};
+function mk(t,s){var sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh;}
+var vs=mk(gl.VERTEX_SHADER,VS),fs=mk(gl.FRAGMENT_SHADER,FS);
+var pg=gl.createProgram();gl.attachShader(pg,vs);gl.attachShader(pg,fs);gl.linkProgram(pg);
+if(!gl.getProgramParameter(pg,gl.LINK_STATUS))return;
+gl.useProgram(pg);
+var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+var pos=gl.getAttribLocation(pg,'position');gl.enableVertexAttribArray(pos);
+gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+var uT=gl.getUniformLocation(pg,'uTime'),uR=gl.getUniformLocation(pg,'uResolution');
+var D=Math.min(window.devicePixelRatio||1,1);
+var w=window.innerWidth,h=window.innerHeight;
+c.width=Math.round(w*D);c.height=Math.round(h*D);
+gl.viewport(0,0,c.width,c.height);
+gl.uniform1f(uT,0);gl.uniform2f(uR,c.width,c.height);
+gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+var start=performance.now();
+var id=0;
+function loop(){id=requestAnimationFrame(loop);var e=(performance.now()-start)/1000;
+gl.uniform1f(uT,e);gl.uniform2f(uR,c.width,c.height);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
+loop();
+function resize(){w=window.innerWidth;h=window.innerHeight;
+c.width=Math.round(w*D);c.height=Math.round(h*D);
+c.style.width=w+'px';c.style.height=h+'px';
+gl.viewport(0,0,c.width,c.height);}
+window.addEventListener('resize',resize);
+window.__ditherCleanup=function(){cancelAnimationFrame(id);window.removeEventListener('resize',resize);
+gl.deleteProgram(pg);gl.deleteShader(vs);gl.deleteShader(fs);gl.deleteBuffer(buf);};
+})()`;
+
 function createShader(
   gl: WebGL2RenderingContext,
   type: number,
@@ -114,7 +154,7 @@ function createShader(
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+    console.error("Shader compile error:", gl.getShaderInfoLog(shader));
     gl.deleteShader(shader);
     return null;
   }
@@ -122,16 +162,26 @@ function createShader(
 }
 
 export function ShaderBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
   useEffect(() => {
-    const canvas = canvasRef.current;
+    // The inline boot script already started the animation loop.
+    // If for some reason it didn't run (e.g. SSR-only), boot it here as fallback.
+    const canvas = document.getElementById("dither-bg") as HTMLCanvasElement | null;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl2', {
+    // Check if the boot script already initialized WebGL
+    const existingGl = canvas.getContext("webgl2");
+    if (existingGl && (window as any).__ditherCleanup) {
+      // Boot script is running, nothing to do
+      return () => {
+        (window as any).__ditherCleanup?.();
+      };
+    }
+
+    // Fallback: initialize from scratch
+    const gl = canvas.getContext("webgl2", {
       antialias: false,
       alpha: false,
-      powerPreference: 'high-performance',
+      powerPreference: "high-performance",
     });
     if (!gl) return;
 
@@ -145,7 +195,7 @@ export function ShaderBackground() {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program));
+      console.error("Program link error:", gl.getProgramInfoLog(program));
       return;
     }
 
@@ -156,12 +206,12 @@ export function ShaderBackground() {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    const posLoc = gl.getAttribLocation(program, 'position');
+    const posLoc = gl.getAttribLocation(program, "position");
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-    const uTime = gl.getUniformLocation(program, 'uTime');
-    const uResolution = gl.getUniformLocation(program, 'uResolution');
+    const uTime = gl.getUniformLocation(program, "uTime");
+    const uResolution = gl.getUniformLocation(program, "uResolution");
 
     const DPR = Math.min(window.devicePixelRatio ?? 1, 1);
     const resize = () => {
@@ -169,17 +219,16 @@ export function ShaderBackground() {
       const h = window.innerHeight;
       canvas.width = Math.round(w * DPR);
       canvas.height = Math.round(h * DPR);
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
       gl.viewport(0, 0, canvas.width, canvas.height);
     };
 
-    window.addEventListener('resize', resize);
+    window.addEventListener("resize", resize);
     resize();
 
     let animId = 0;
     const start = performance.now();
-
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const elapsed = (performance.now() - start) / 1000;
@@ -192,7 +241,7 @@ export function ShaderBackground() {
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
+      window.removeEventListener("resize", resize);
       gl.deleteProgram(program);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
@@ -200,7 +249,6 @@ export function ShaderBackground() {
     };
   }, []);
 
-  return (
-    <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0" aria-hidden="true" />
-  );
+  // Canvas is rendered in __root.tsx, not here
+  return null;
 }
