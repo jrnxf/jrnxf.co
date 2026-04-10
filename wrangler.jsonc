@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jrnxf-co",
+  "compatibility_date": "2026-04-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+  },
+  "routes": [
+    { "pattern": "jrnxf.co", "custom_domain": true },
+    { "pattern": "www.jrnxf.co", "custom_domain": true },
+  ],
+}

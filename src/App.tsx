@@ -1,12 +1,11 @@
-import { ShaderBackground } from '@/components/particle-field';
-import { RepoCard } from '@/components/repo-card';
-import { SocialLinks } from '@/components/social-links';
-import { fetchPinnedRepos, type GitHubRepo } from '@/lib/github';
-import { Location01Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { useEffect, useState } from 'react';
+import { ShaderBackground } from "@/components/particle-field";
+import { RepoCard } from "@/components/repo-card";
+import { SocialLinks } from "@/components/social-links";
+import type { GitHubRepo } from "@/lib/github";
+import { Location01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 
-const AVATAR_URL = '/avatar.jpg';
+const AVATAR_URL = "/avatar.jpg";
 
 function Sidebar() {
   return (
@@ -45,13 +44,7 @@ function Sidebar() {
   );
 }
 
-export default function App() {
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
-
-  useEffect(() => {
-    void fetchPinnedRepos().then(setRepos);
-  }, []);
-
+export default function App({ repos }: { repos: GitHubRepo[] }) {
   return (
     <>
       <ShaderBackground />
