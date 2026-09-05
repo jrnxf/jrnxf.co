@@ -9,8 +9,8 @@
   "observability": {
     "enabled": true,
   },
-  "routes": [
-    { "pattern": "jrnxf.co", "custom_domain": true },
-    { "pattern": "www.jrnxf.co", "custom_domain": true },
-  ],
+  // www.jrnxf.co is a 301 redirect to the apex, managed as a DNS record +
+  // redirect rule in the Cloudflare zone - do not add it as a custom domain
+  // here, the attach fails against the existing records.
+  "routes": [{ "pattern": "jrnxf.co", "custom_domain": true }],
 }
