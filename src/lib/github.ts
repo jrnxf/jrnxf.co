@@ -25,15 +25,19 @@ const LANGUAGE_COLORS: Record<string, string> = {
 };
 
 async function fetchRepos(token: string): Promise<GitHubRepo[]> {
+  const attempt = (name: string, auth: boolean) =>
+    fetch(`https://api.github.com/repos/${OWNER}/${name}`, {
+      headers: {
+        ...(auth ? { Authorization: `token ${token}` } : {}),
+        "User-Agent": "jrnxf-worker",
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
   const results = await Promise.all(
     REPOS.map(async (name) => {
-      const res = await fetch(`https://api.github.com/repos/${OWNER}/${name}`, {
-        headers: {
-          Authorization: `token ${token}`,
-          "User-Agent": "jrnxf-worker",
-          Accept: "application/vnd.github.v3+json",
-        },
-      });
+      let res = await attempt(name, token !== "");
+      // Stale/revoked token: these repos are public, so retry unauthenticated.
+      if (res.status === 401 && token !== "") res = await attempt(name, false);
       if (!res.ok) return null;
       const data = (await res.json()) as Record<string, unknown>;
       return {
@@ -52,6 +56,5 @@ async function fetchRepos(token: string): Promise<GitHubRepo[]> {
 
 export const getRepos = createServerFn({ method: "GET" }).handler(async () => {
   const token = (env as Record<string, string>).GITHUB_TOKEN ?? "";
-  if (!token) return [];
   return fetchRepos(token);
 });

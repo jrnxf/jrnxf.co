@@ -2,15 +2,9 @@
 import type { ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import appCss from "@/index.css?url";
-import geistSans400 from "@fontsource/geist-sans/latin-400.css?url";
-import geistSans500 from "@fontsource/geist-sans/latin-500.css?url";
-import geistSans600 from "@fontsource/geist-sans/latin-600.css?url";
-import geistSans700 from "@fontsource/geist-sans/latin-700.css?url";
+import geistMono400 from "@fontsource/geist-mono/latin-400.css?url";
 import geistMono700 from "@fontsource/geist-mono/latin-700.css?url";
-import geistSans400Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
-import geistSans500Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
-import geistSans600Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2?url";
-import geistSans700Woff2 from "@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2?url";
+import geistMono400Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistMono700Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-700-normal.woff2?url";
 import { SHADER_BOOT_SCRIPT } from "@/components/particle-field";
 
@@ -49,35 +43,11 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "stylesheet", href: geistSans400 },
-      { rel: "stylesheet", href: geistSans500 },
-      { rel: "stylesheet", href: geistSans600 },
-      { rel: "stylesheet", href: geistSans700 },
+      { rel: "stylesheet", href: geistMono400 },
       { rel: "stylesheet", href: geistMono700 },
       {
         rel: "preload",
-        href: geistSans400Woff2,
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "preload",
-        href: geistSans500Woff2,
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "preload",
-        href: geistSans600Woff2,
-        as: "font",
-        type: "font/woff2",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "preload",
-        href: geistSans700Woff2,
+        href: geistMono400Woff2,
         as: "font",
         type: "font/woff2",
         crossOrigin: "anonymous",
@@ -89,7 +59,6 @@ export const Route = createRootRoute({
         type: "font/woff2",
         crossOrigin: "anonymous",
       },
-      { rel: "preload", href: "/avatar.webp", as: "image", type: "image/webp" },
       {
         rel: "icon",
         href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>",
@@ -118,6 +87,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <body>
         <canvas
           id="dither-bg"
+          suppressHydrationWarning
           style={{
             position: "fixed",
             inset: 0,

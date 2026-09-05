@@ -12,6 +12,8 @@ precision highp float;
 
 uniform float uTime;
 uniform vec2 uResolution;
+uniform vec2 uMouse;
+uniform float uMouseStrength;
 
 out vec4 fragColor;
 
@@ -85,6 +87,13 @@ void main() {
   vec2 uvA = vec2(uv.x * aspect, uv.y);
   float t = uTime;
 
+  vec2 m = vec2(uMouse.x * aspect, uMouse.y);
+  vec2 dm = uvA - m;
+  float dist = length(dm);
+  float pull = exp(-dist * dist * 6.0) * uMouseStrength;
+  uvA += normalize(dm + 1e-4) * pull * 0.35;
+  uvA += vec2(snoise(vec3(uvA * 3.0, t * 0.3)), snoise(vec3(uvA * 3.0 + 7.0, t * 0.3))) * pull * 0.25;
+
   float warp1 = fbm(vec3(uvA * 1.0, t * 0.02));
   float warp2 = fbm(vec3(uvA * 0.8 + warp1 * 0.4 + 3.0, t * 0.015));
   float field = fbm(vec3(uvA * 1.2 + warp2 * 0.35, t * 0.018));
@@ -92,6 +101,7 @@ void main() {
   float intensity = field * 0.5 + 0.5;
   intensity = smoothstep(0.2, 0.8, intensity);
   intensity *= 0.30;
+  intensity += pull * 0.28;
 
   float g1 = hash(gl_FragCoord.xy + fract(t * 0.6) * 1000.0);
   float g2 = hash(gl_FragCoord.xy * 1.7 + fract(t * 0.9) * 500.0);
@@ -124,16 +134,24 @@ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_
 var pos=gl.getAttribLocation(pg,'position');gl.enableVertexAttribArray(pos);
 gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
 var uT=gl.getUniformLocation(pg,'uTime'),uR=gl.getUniformLocation(pg,'uResolution');
+var uM=gl.getUniformLocation(pg,'uMouse'),uMS=gl.getUniformLocation(pg,'uMouseStrength');
 var D=Math.min(window.devicePixelRatio||1,1);
 var w=window.innerWidth,h=window.innerHeight;
 c.width=Math.round(w*D);c.height=Math.round(h*D);
 gl.viewport(0,0,c.width,c.height);
-gl.uniform1f(uT,0);gl.uniform2f(uR,c.width,c.height);
+gl.uniform1f(uT,0);gl.uniform2f(uR,c.width,c.height);gl.uniform2f(uM,-10,-10);gl.uniform1f(uMS,0);
 gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+var tx=-10,ty=-10,mx=-10,my=-10,ts=0,ms=0;
+function move(e){tx=e.clientX/window.innerWidth;ty=1-e.clientY/window.innerHeight;ts=1;}
+function leave(){ts=0;}
+window.addEventListener('pointermove',move);
+document.addEventListener('pointerleave',leave);
 var start=performance.now();
 var id=0;
 function loop(){id=requestAnimationFrame(loop);var e=(performance.now()-start)/1000;
-gl.uniform1f(uT,e);gl.uniform2f(uR,c.width,c.height);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
+mx+=(tx-mx)*0.08;my+=(ty-my)*0.08;ms+=(ts-ms)*0.06;
+gl.uniform1f(uT,e);gl.uniform2f(uR,c.width,c.height);gl.uniform2f(uM,mx,my);gl.uniform1f(uMS,ms);
+gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
 loop();
 function resize(){w=window.innerWidth;h=window.innerHeight;
 c.width=Math.round(w*D);c.height=Math.round(h*D);
@@ -141,6 +159,7 @@ c.style.width=w+'px';c.style.height=h+'px';
 gl.viewport(0,0,c.width,c.height);}
 window.addEventListener('resize',resize);
 window.__ditherCleanup=function(){cancelAnimationFrame(id);window.removeEventListener('resize',resize);
+window.removeEventListener('pointermove',move);document.removeEventListener('pointerleave',leave);
 gl.deleteProgram(pg);gl.deleteShader(vs);gl.deleteShader(fs);gl.deleteBuffer(buf);};
 })()`;
 
@@ -212,6 +231,25 @@ export function ShaderBackground() {
 
     const uTime = gl.getUniformLocation(program, "uTime");
     const uResolution = gl.getUniformLocation(program, "uResolution");
+    const uMouse = gl.getUniformLocation(program, "uMouse");
+    const uMouseStrength = gl.getUniformLocation(program, "uMouseStrength");
+
+    let tx = -10,
+      ty = -10,
+      mx = -10,
+      my = -10,
+      ts = 0,
+      ms = 0;
+    const onMove = (e: PointerEvent) => {
+      tx = e.clientX / window.innerWidth;
+      ty = 1 - e.clientY / window.innerHeight;
+      ts = 1;
+    };
+    const onLeave = () => {
+      ts = 0;
+    };
+    window.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerleave", onLeave);
 
     const DPR = Math.min(window.devicePixelRatio ?? 1, 1);
     const resize = () => {
@@ -232,8 +270,13 @@ export function ShaderBackground() {
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const elapsed = (performance.now() - start) / 1000;
+      mx += (tx - mx) * 0.08;
+      my += (ty - my) * 0.08;
+      ms += (ts - ms) * 0.06;
       gl.uniform1f(uTime, elapsed);
       gl.uniform2f(uResolution, canvas.width, canvas.height);
+      gl.uniform2f(uMouse, mx, my);
+      gl.uniform1f(uMouseStrength, ms);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
 
@@ -242,6 +285,8 @@ export function ShaderBackground() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onLeave);
       gl.deleteProgram(program);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
