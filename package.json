@@ -39,5 +39,6 @@
     "semi": false,
     "singleQuote": true,
     "trailingComma": "all"
-  }
+  },
+  "packageManager": "pnpm@10.29.2"
 }
