@@ -19,6 +19,40 @@ function Prompt({ children }: { children: ReactNode }) {
   );
 }
 
+function Identity() {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-baseline sm:gap-4">
+        <h1 className="text-[30px] font-bold leading-[1.05] tracking-[-0.02em] text-white sm:text-[40px] sm:leading-none">
+          colby thomas
+        </h1>
+        <a
+          href="https://github.com/jrnxf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-fit rounded-md text-[13px] text-neutral-500 transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:text-sm"
+        >
+          @jrnxf
+        </a>
+      </div>
+      <p className="max-w-[560px] text-[13px] leading-[1.7] text-neutral-400 sm:text-sm">
+        software engineer. i build small, fast tools for the terminal and the web, mostly in rust,
+        go and typescript.
+      </p>
+    </div>
+  );
+}
+
+function RepoTable({ repos }: { repos: GitHubRepo[] }) {
+  return (
+    <div className="flex flex-col border-t border-white/[0.08]">
+      {repos.map((repo) => (
+        <RepoRow key={repo.name} repo={repo} />
+      ))}
+    </div>
+  );
+}
+
 export default function App({ repos }: { repos: GitHubRepo[] }) {
   const sorted = [...repos].sort((a, b) => b.stars - a.stars);
   const [cleared, setCleared] = useState(false);
@@ -42,24 +76,8 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
                 <span>whoami</span>
               </Prompt>
             </div>
-            <div className="mt-3.5 flex flex-col gap-2.5 pl-[22px] sm:mt-4 sm:pl-[26px]">
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-baseline sm:gap-4">
-                <h1 className="text-[30px] font-bold leading-[1.05] tracking-[-0.02em] text-white sm:text-[40px] sm:leading-none">
-                  colby thomas
-                </h1>
-                <a
-                  href="https://github.com/jrnxf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-fit rounded-md text-[13px] text-neutral-500 transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:text-sm"
-                >
-                  @jrnxf
-                </a>
-              </div>
-              <p className="max-w-[560px] text-[13px] leading-[1.7] text-neutral-400 sm:text-sm">
-                software engineer. i build small, fast tools for the terminal and the web, mostly in
-                rust, go and typescript.
-              </p>
+            <div className="mt-3.5 pl-[22px] sm:mt-4 sm:pl-[26px]">
+              <Identity />
             </div>
 
             {/* repos */}
@@ -68,16 +86,20 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
                 <span>ls ~/repos --sort stars</span>
               </Prompt>
             </div>
-            <div className="ml-[22px] mt-3 flex flex-col border-t border-white/[0.08] sm:ml-[26px] sm:mt-3.5">
-              {sorted.map((repo) => (
-                <RepoRow key={repo.name} repo={repo} />
-              ))}
+            <div className="ml-[22px] mt-3 sm:ml-[26px] sm:mt-3.5">
+              <RepoTable repos={sorted} />
             </div>
           </>
         )}
 
-        {/* footer */}
-        <footer className="mt-auto flex flex-col gap-[22px] pt-12 sm:gap-4">
+        {/* footer; after `clear` the prompt moves to the top of the screen */}
+        <footer
+          className={
+            cleared
+              ? "mt-6 flex flex-col gap-[22px] sm:gap-4"
+              : "mt-auto flex flex-col gap-[22px] pt-12 sm:gap-4"
+          }
+        >
           {!cleared && (
             <>
               <div className="flex flex-col gap-2.5">
@@ -126,7 +148,13 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
             </>
           )}
 
-          <TerminalPrompt repos={sorted} mail={MAIL} onClear={() => setCleared(true)} />
+          <TerminalPrompt
+            mail={MAIL}
+            whoamiOutput={<Identity />}
+            lsOutput={<RepoTable repos={sorted} />}
+            onClear={() => setCleared(true)}
+            onReset={() => setCleared(false)}
+          />
         </footer>
       </div>
     </>

@@ -1,4 +1,3 @@
-import type { GitHubRepo } from "@/lib/github";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -19,18 +18,24 @@ const SITES: Record<string, string> = {
 const HELP = `available commands:
   whoami         who am i
   ls             list repos
+  echo <text>    say it back
   mail           send me an email
   open <site>    github · linkedin · instagram · twitter · youtube
-  clear          clear the screen`;
+  clear          clear the screen
+  reset          restore the home screen`;
 
 export function TerminalPrompt({
-  repos,
   mail,
+  whoamiOutput,
+  lsOutput,
   onClear,
+  onReset,
 }: {
-  repos: GitHubRepo[];
   mail: string;
+  whoamiOutput: ReactNode;
+  lsOutput: ReactNode;
   onClear: () => void;
+  onReset: () => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [value, setValue] = useState("");
@@ -57,8 +62,21 @@ export function TerminalPrompt({
         el.focus();
       }
     };
+    // Clicking empty space focuses the prompt too, like a real terminal —
+    // desktop only, so mobile taps don't pop the keyboard while scrolling.
+    const onClick = (e: MouseEvent) => {
+      if (!window.matchMedia("(pointer: fine)").matches) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("a,button,input,textarea")) return;
+      if (window.getSelection()?.toString()) return;
+      inputRef.current?.focus({ preventScroll: true });
+    };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("click", onClick);
+    };
   }, []);
 
   useEffect(() => {
@@ -86,45 +104,26 @@ export function TerminalPrompt({
         print(cmd, <pre className="whitespace-pre-wrap">{HELP}</pre>);
         break;
       case "whoami":
-        print(
-          cmd,
-          <p>
-            colby thomas ·{" "}
-            <a
-              href={SITES.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white hover:text-accent"
-            >
-              @jrnxf
-            </a>{" "}
-            · software engineer · vila chã, portugal
-          </p>,
-        );
+        print(cmd, whoamiOutput);
         break;
       case "ls":
-        print(
-          cmd,
-          <div className="flex flex-col gap-1">
-            {repos.map((repo) => (
-              <div key={repo.name} className="flex gap-5">
-                <a
-                  href={repo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-[150px] shrink-0 font-bold text-white hover:text-accent"
-                >
-                  {repo.name}
-                </a>
-                <span className="text-neutral-500">★ {repo.stars}</span>
-              </div>
-            ))}
-          </div>,
-        );
+        print(cmd, lsOutput);
+        break;
+      case "echo":
+        print(cmd, args.length > 0 ? <p>{args.join(" ")}</p> : null);
         break;
       case "mail":
         window.location.href = `mailto:${mail}`;
-        print(cmd, <p>drafting email to {mail} ...</p>);
+        print(
+          cmd,
+          <p>
+            drafting email to{" "}
+            <a href={`mailto:${mail}`} className="text-white hover:text-accent">
+              {mail}
+            </a>{" "}
+            ... (click the address if nothing opened)
+          </p>,
+        );
         break;
       case "open": {
         const site = args[0]?.toLowerCase();
@@ -146,6 +145,10 @@ export function TerminalPrompt({
       case "clear":
         setEntries([]);
         onClear();
+        break;
+      case "reset":
+        setEntries([]);
+        onReset();
         break;
       case "sudo":
         print(cmd, <p>nice try.</p>);
