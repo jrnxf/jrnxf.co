@@ -13,9 +13,7 @@ const ASCII = [
 ].join("\n");
 
 const INFO: [string, string][] = [
-  ["role", "software engineer"],
   ["location", "vila chã, portugal"],
-  ["stack", "rust · go · typescript"],
   ["site", "jrnxf.co"],
   ["github", "github.com/jrnxf"],
 ];

@@ -20,8 +20,8 @@ const HELP = `available commands:
   whoami         who am i
   ls             list repos
   echo <text>    say it back
-  mail           copy my email address
-  open <site>    github · linkedin · instagram · twitter · youtube
+  mail           email me
+  open [site]    github · linkedin · instagram · twitter · youtube
   neofetch       system info, sort of
   date           what time is it in vila chã
   clear          clear the screen
@@ -39,6 +39,13 @@ const COMMANDS = [
   "clear",
   "reset",
 ];
+
+// fzf-style subsequence match: every char of the query appears in order.
+function fuzzyMatch(query: string, text: string) {
+  let i = 0;
+  for (const ch of text) if (ch === query[i]) i++;
+  return i >= query.length;
+}
 
 function formatDate() {
   return new Date()
@@ -72,6 +79,8 @@ export function TerminalPrompt({
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [value, setValue] = useState("");
+  // Site picker for bare `open`: while active, `value` is the filter query.
+  const [picker, setPicker] = useState<{ idx: number } | null>(null);
   const [past, setPast] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +149,18 @@ export function TerminalPrompt({
     setEntries((prev) => [...prev, { id: nextId.current++, cmd, output }]);
   };
 
+  const setLastOutput = (output: ReactNode) => {
+    setEntries((prev) =>
+      prev.length > 0 ? [...prev.slice(0, -1), { ...prev[prev.length - 1], output }] : prev,
+    );
+  };
+
+  const openSite = (site: string) => {
+    window.open(SITES[site], "_blank", "noopener,noreferrer");
+  };
+
+  const pickerSites = Object.keys(SITES).filter((s) => fuzzyMatch(value.toLowerCase(), s));
+
   const run = (raw: string) => {
     const cmd = raw.trim();
     if (cmd !== "") setPast((prev) => [...prev, cmd]);
@@ -166,29 +187,29 @@ export function TerminalPrompt({
         print(cmd, args.length > 0 ? <p>{args.join(" ")}</p> : null);
         break;
       case "mail":
-        navigator.clipboard?.writeText(mail).catch(() => {});
+        if (args.length > 0) {
+          print(cmd, <p>mail: takes no arguments</p>);
+          break;
+        }
+        window.location.href = `mailto:${mail}`;
         print(
           cmd,
           <p>
-            copied{" "}
+            opening{" "}
             <a href={`mailto:${mail}`} className="text-white hover:text-accent">
               {mail}
             </a>{" "}
-            to your clipboard
+            ...
           </p>,
         );
         break;
       case "open": {
         const site = args[0]?.toLowerCase();
         if (!site) {
-          print(
-            cmd,
-            <p>
-              usage: open {"<site>"} — {Object.keys(SITES).join(" · ")}
-            </p>,
-          );
+          print(cmd, null);
+          setPicker({ idx: 0 });
         } else if (SITES[site]) {
-          window.open(SITES[site], "_blank", "noopener,noreferrer");
+          openSite(site);
           print(cmd, <p>opening {site} ...</p>);
         } else {
           print(cmd, <p>open: unknown site: {site}</p>);
@@ -238,65 +259,113 @@ export function TerminalPrompt({
 
       {/* live prompt */}
       <div
-        className="flex cursor-text items-center gap-2.5 text-sm text-neutral-400 sm:gap-3"
+        className="flex cursor-text flex-col gap-1 text-sm text-neutral-400"
         onClick={() => inputRef.current?.focus()}
       >
-        <span className="text-accent">❯</span>
-        <span className="flex min-w-0 items-center">
-          <span className="whitespace-pre-wrap break-all text-white">{value}</span>
-          <span
-            className="inline-block h-[17px] w-[9px] shrink-0 bg-[#e5e5e5] [animation:blink_1.1s_steps(1)_infinite]"
-            aria-hidden="true"
-          />
-        </span>
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Tab") {
-              e.preventDefault();
-              complete();
-              return;
-            }
-            tabState.current = null;
-            if (e.key === "Enter") {
-              run(value);
-              setValue("");
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              if (past.length === 0) return;
-              const idx = histIdx === -1 ? past.length - 1 : Math.max(0, histIdx - 1);
-              setHistIdx(idx);
-              setValue(past[idx]);
-            } else if (e.key === "ArrowDown") {
-              e.preventDefault();
-              if (histIdx === -1) return;
-              const idx = histIdx + 1;
-              if (idx >= past.length) {
-                setHistIdx(-1);
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <span className="text-accent">❯</span>
+          <span className="flex min-w-0 items-center">
+            <span className="whitespace-pre-wrap break-all text-white">{value}</span>
+            <span
+              className="inline-block h-[17px] w-[9px] shrink-0 bg-[#e5e5e5] [animation:blink_1.1s_steps(1)_infinite]"
+              aria-hidden="true"
+            />
+          </span>
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              if (picker) setPicker({ idx: 0 });
+            }}
+            onKeyDown={(e) => {
+              if (picker) {
+                if (e.key === "Escape" || (e.key === "c" && e.ctrlKey)) {
+                  e.preventDefault();
+                  setPicker(null);
+                  setValue("");
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  const site = pickerSites[picker.idx];
+                  if (!site) return;
+                  openSite(site);
+                  setLastOutput(<p>opening {site} ...</p>);
+                  setPicker(null);
+                  setValue("");
+                } else if (e.key === "ArrowUp" || (e.key === "p" && e.ctrlKey)) {
+                  e.preventDefault();
+                  setPicker({
+                    idx: (picker.idx - 1 + pickerSites.length) % Math.max(1, pickerSites.length),
+                  });
+                } else if (
+                  e.key === "ArrowDown" ||
+                  e.key === "Tab" ||
+                  (e.key === "n" && e.ctrlKey)
+                ) {
+                  e.preventDefault();
+                  setPicker({ idx: (picker.idx + 1) % Math.max(1, pickerSites.length) });
+                }
+                return;
+              }
+              if (e.key === "Tab") {
+                e.preventDefault();
+                complete();
+                return;
+              }
+              tabState.current = null;
+              if (e.key === "Enter") {
+                run(value);
                 setValue("");
-              } else {
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (past.length === 0) return;
+                const idx = histIdx === -1 ? past.length - 1 : Math.max(0, histIdx - 1);
                 setHistIdx(idx);
                 setValue(past[idx]);
+              } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (histIdx === -1) return;
+                const idx = histIdx + 1;
+                if (idx >= past.length) {
+                  setHistIdx(-1);
+                  setValue("");
+                } else {
+                  setHistIdx(idx);
+                  setValue(past[idx]);
+                }
+              } else if (e.key === "c" && e.ctrlKey) {
+                setValue("");
+                setHistIdx(-1);
+              } else if (e.key === "l" && e.ctrlKey) {
+                e.preventDefault();
+                setEntries([]);
+                onClear();
               }
-            } else if (e.key === "c" && e.ctrlKey) {
-              setValue("");
-              setHistIdx(-1);
-            } else if (e.key === "l" && e.ctrlKey) {
-              e.preventDefault();
-              setEntries([]);
-              onClear();
-            }
-          }}
-          aria-label="terminal input"
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="send"
-          className="absolute h-px w-px opacity-0"
-        />
+            }}
+            aria-label="terminal input"
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="send"
+            className="absolute h-px w-px opacity-0"
+          />
+        </div>
+        {picker && (
+          <div className="pl-[22px] text-[13px] leading-[1.7] sm:pl-[26px]">
+            {pickerSites.length === 0 ? (
+              <p className="text-neutral-600">no match</p>
+            ) : (
+              pickerSites.map((site, i) => (
+                <p key={site} className={i === picker.idx ? "text-white" : "text-neutral-500"}>
+                  <span className={i === picker.idx ? "text-accent" : "invisible"}>❯ </span>
+                  {site}
+                </p>
+              ))
+            )}
+            <p className="mt-1 text-neutral-600">↑↓ move · enter open · esc cancel</p>
+          </div>
+        )}
       </div>
       <div ref={endRef} />
     </div>
