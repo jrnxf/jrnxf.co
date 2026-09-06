@@ -97,7 +97,7 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
           className={
             cleared
               ? "mt-6 flex flex-col gap-[22px] sm:gap-4"
-              : "mt-auto flex flex-col gap-[22px] pt-12 sm:gap-4"
+              : "mt-9 flex flex-col gap-[22px] sm:mt-11 sm:gap-4"
           }
         >
           {!cleared && (
