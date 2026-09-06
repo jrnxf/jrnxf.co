@@ -17,9 +17,7 @@ const SITES: Record<string, string> = {
 };
 
 const HELP = `available commands:
-  whoami         who am i
   ls             list repos
-  echo <text>    say it back
   mail           email me
   open [site]    github · linkedin · instagram · twitter · youtube
   neofetch       system info, sort of
@@ -27,18 +25,7 @@ const HELP = `available commands:
   clear          clear the screen
   reset          restore the home screen`;
 
-const COMMANDS = [
-  "help",
-  "whoami",
-  "ls",
-  "echo",
-  "mail",
-  "open",
-  "neofetch",
-  "date",
-  "clear",
-  "reset",
-];
+const COMMANDS = ["help", "ls", "mail", "open", "neofetch", "date", "clear", "reset"];
 
 // fzf-style subsequence match: every char of the query appears in order.
 function fuzzyMatch(query: string, text: string) {
@@ -66,13 +53,11 @@ function formatDate() {
 
 export function TerminalPrompt({
   mail,
-  whoamiOutput,
   lsOutput,
   onClear,
   onReset,
 }: {
   mail: string;
-  whoamiOutput: ReactNode;
   lsOutput: ReactNode;
   onClear: () => void;
   onReset: () => void;
@@ -177,14 +162,8 @@ export function TerminalPrompt({
       case "help":
         print(cmd, <pre className="whitespace-pre-wrap">{HELP}</pre>);
         break;
-      case "whoami":
-        print(cmd, whoamiOutput);
-        break;
       case "ls":
         print(cmd, lsOutput);
-        break;
-      case "echo":
-        print(cmd, args.length > 0 ? <p>{args.join(" ")}</p> : null);
         break;
       case "mail":
         if (args.length > 0) {
@@ -271,7 +250,7 @@ export function TerminalPrompt({
               aria-hidden="true"
             />
             {value === "" && (
-              <span className="ml-2 select-none whitespace-nowrap text-neutral-600">
+              <span className="select-none whitespace-nowrap text-neutral-600">
                 {picker ? "type to filter" : "type `help` for commands"}
               </span>
             )}
@@ -367,7 +346,7 @@ export function TerminalPrompt({
                   className={`flex items-center gap-2.5 ${i === picker.idx ? "text-white" : "text-neutral-500"}`}
                 >
                   <span
-                    className={`h-[15px] w-[3px] shrink-0 ${i === picker.idx ? "bg-accent" : "bg-transparent"}`}
+                    className={`h-[15px] w-[3px] shrink-0 ${i === picker.idx ? "bg-accent" : "bg-neutral-500"}`}
                     aria-hidden="true"
                   />
                   {site}

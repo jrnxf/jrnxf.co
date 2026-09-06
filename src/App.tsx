@@ -17,30 +17,6 @@ function Prompt({ children }: { children: ReactNode }) {
   );
 }
 
-function Identity() {
-  return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-baseline sm:gap-4">
-        <h1 className="text-[30px] font-bold leading-[1.05] tracking-[-0.02em] text-white sm:text-[40px] sm:leading-none">
-          colby thomas
-        </h1>
-        <a
-          href="https://github.com/jrnxf"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-fit rounded-md text-[13px] text-neutral-500 transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:text-sm"
-        >
-          @jrnxf
-        </a>
-      </div>
-      <p className="max-w-[560px] text-[13px] leading-[1.7] text-neutral-400 sm:text-sm">
-        software engineer. i build small, fast tools for the terminal and the web, mostly in rust,
-        go and typescript.
-      </p>
-    </div>
-  );
-}
-
 function RepoTable({ repos }: { repos: GitHubRepo[] }) {
   return (
     <div className="flex flex-col border-t border-white/[0.08]">
@@ -100,7 +76,6 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
         >
           <TerminalPrompt
             mail={MAIL}
-            whoamiOutput={<Identity />}
             lsOutput={<RepoTable repos={sorted} />}
             onClear={() => setCleared(true)}
             onReset={() => setCleared(false)}
