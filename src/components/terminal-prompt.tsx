@@ -53,11 +53,13 @@ function formatDate() {
 
 export function TerminalPrompt({
   mail,
+  stars,
   lsOutput,
   onClear,
   onReset,
 }: {
   mail: string;
+  stars: number;
   lsOutput: ReactNode;
   onClear: () => void;
   onReset: () => void;
@@ -196,7 +198,7 @@ export function TerminalPrompt({
         break;
       }
       case "neofetch":
-        print(cmd, <Neofetch mail={mail} />);
+        print(cmd, <Neofetch mail={mail} stars={stars} />);
         break;
       case "date":
         print(cmd, <p>{formatDate()}</p>);

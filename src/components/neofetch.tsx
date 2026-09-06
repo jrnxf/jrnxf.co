@@ -14,7 +14,6 @@ const ASCII = [
 
 const INFO: [string, string][] = [
   ["location", "vila chã, portugal"],
-  ["site", "jrnxf.co"],
   ["github", "github.com/jrnxf"],
 ];
 
@@ -29,7 +28,7 @@ const PALETTE = [
   "oklch(0.48 0.12 25)",
 ];
 
-export function Neofetch({ mail }: { mail: string }) {
+export function Neofetch({ mail, stars }: { mail: string; stars: number }) {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-10">
       <pre className="shrink-0 text-[8px] leading-none text-accent xs:text-[9px] sm:text-[13px]">
@@ -49,6 +48,18 @@ export function Neofetch({ mail }: { mail: string }) {
         <p>
           <span className="inline-block w-[9ch] text-accent">mail</span>
           {mail}
+        </p>
+        <p>
+          <span className="inline-block w-[9ch] text-accent">uptime</span>
+          too long
+        </p>
+        <p>
+          <span className="inline-block w-[9ch] text-accent">shell</span>
+          zsh
+        </p>
+        <p>
+          <span className="inline-block w-[9ch] text-accent">stars</span>
+          {stars.toLocaleString("en-US")}
         </p>
         <div className="mt-2 flex">
           {PALETTE.map((color) => (

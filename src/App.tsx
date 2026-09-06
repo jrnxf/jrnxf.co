@@ -29,6 +29,7 @@ function RepoTable({ repos }: { repos: GitHubRepo[] }) {
 
 export default function App({ repos }: { repos: GitHubRepo[] }) {
   const sorted = [...repos].sort((a, b) => b.stars - a.stars);
+  const stars = repos.reduce((total, repo) => total + repo.stars, 0);
   const [cleared, setCleared] = useState(false);
 
   return (
@@ -51,13 +52,13 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
               </Prompt>
             </div>
             <div className="mt-3.5 pl-[22px] text-[13px] leading-[1.7] text-neutral-400 sm:mt-4 sm:pl-[26px]">
-              <Neofetch mail={MAIL} />
+              <Neofetch mail={MAIL} stars={stars} />
             </div>
 
             {/* repos */}
             <div className="mt-9 sm:mt-11">
               <Prompt>
-                <span>ls ~/repos --sort stars</span>
+                <span>ls</span>
               </Prompt>
             </div>
             <div className="ml-[22px] mt-3 sm:ml-[26px] sm:mt-3.5">
@@ -76,6 +77,7 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
         >
           <TerminalPrompt
             mail={MAIL}
+            stars={stars}
             lsOutput={<RepoTable repos={sorted} />}
             onClear={() => setCleared(true)}
             onReset={() => setCleared(false)}
