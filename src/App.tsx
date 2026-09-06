@@ -2,7 +2,9 @@ import { Neofetch } from "@/components/neofetch";
 import { ShaderBackground } from "@/components/particle-field";
 import { RepoRow } from "@/components/repo-row";
 import { TerminalPrompt } from "@/components/terminal-prompt";
+import { WeatherBadge } from "@/components/weather-badge";
 import type { GitHubRepo } from "@/lib/github";
+import type { Weather } from "@/lib/weather";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -27,9 +29,8 @@ function RepoTable({ repos }: { repos: GitHubRepo[] }) {
   );
 }
 
-export default function App({ repos }: { repos: GitHubRepo[] }) {
+export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: Weather | null }) {
   const sorted = [...repos].sort((a, b) => b.stars - a.stars);
-  const stars = repos.reduce((total, repo) => total + repo.stars, 0);
   const [cleared, setCleared] = useState(false);
 
   return (
@@ -39,8 +40,16 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
         {/* status line */}
         <div className="flex justify-between text-xs tracking-[0.02em] text-neutral-500">
           <span>colby@jrnxf ~</span>
-          <span className="sm:hidden">vila chã, pt</span>
-          <span className="hidden sm:inline">vila chã, portugal · wet+1</span>
+          <span className="flex items-center gap-2">
+            <span className="sm:hidden">vila chã, pt</span>
+            <span className="hidden sm:inline">vila chã, portugal</span>
+            {weather && (
+              <>
+                <span>·</span>
+                <WeatherBadge weather={weather} />
+              </>
+            )}
+          </span>
         </div>
 
         {!cleared && (
@@ -52,7 +61,7 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
               </Prompt>
             </div>
             <div className="mt-3.5 pl-[22px] text-[13px] leading-[1.7] text-neutral-400 sm:mt-4 sm:pl-[26px]">
-              <Neofetch mail={MAIL} stars={stars} />
+              <Neofetch mail={MAIL} />
             </div>
 
             {/* repos */}
@@ -77,7 +86,6 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
         >
           <TerminalPrompt
             mail={MAIL}
-            stars={stars}
             lsOutput={<RepoTable repos={sorted} />}
             onClear={() => setCleared(true)}
             onReset={() => setCleared(false)}
