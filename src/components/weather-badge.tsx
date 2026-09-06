@@ -32,8 +32,8 @@ function weatherIcon(code: number, isDay: boolean) {
 export function WeatherBadge({ weather }: { weather: Weather }) {
   return (
     <span className="flex items-center gap-1.5">
-      {weather.temp}°
       <HugeiconsIcon icon={weatherIcon(weather.code, weather.isDay)} size={14} strokeWidth={1.5} />
+      {weather.temp}°
     </span>
   );
 }
