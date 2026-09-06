@@ -1,3 +1,4 @@
+import { Neofetch } from "@/components/neofetch";
 import { ShaderBackground } from "@/components/particle-field";
 import { RepoRow } from "@/components/repo-row";
 import { SocialLinks, socialLinks } from "@/components/social-links";
@@ -70,14 +71,14 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
 
         {!cleared && (
           <>
-            {/* whoami */}
+            {/* neofetch */}
             <div className="mt-10 sm:mt-14">
               <Prompt>
-                <span>whoami</span>
+                <span>neofetch</span>
               </Prompt>
             </div>
-            <div className="mt-3.5 pl-[22px] sm:mt-4 sm:pl-[26px]">
-              <Identity />
+            <div className="mt-3.5 pl-[22px] text-[13px] leading-[1.7] text-neutral-400 sm:mt-4 sm:pl-[26px]">
+              <Neofetch mail={MAIL} />
             </div>
 
             {/* repos */}
