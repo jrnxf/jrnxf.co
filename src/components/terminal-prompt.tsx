@@ -270,6 +270,11 @@ export function TerminalPrompt({
               className="inline-block h-[17px] w-[9px] shrink-0 bg-[#e5e5e5] [animation:blink_1.1s_steps(1)_infinite]"
               aria-hidden="true"
             />
+            {value === "" && (
+              <span className="ml-2 select-none whitespace-nowrap text-neutral-600">
+                {picker ? "type to filter" : "type `help` for commands"}
+              </span>
+            )}
           </span>
           <input
             ref={inputRef}
@@ -357,8 +362,14 @@ export function TerminalPrompt({
               <p className="text-neutral-600">no match</p>
             ) : (
               pickerSites.map((site, i) => (
-                <p key={site} className={i === picker.idx ? "text-white" : "text-neutral-500"}>
-                  <span className={i === picker.idx ? "text-accent" : "invisible"}>❯ </span>
+                <p
+                  key={site}
+                  className={`flex items-center gap-2.5 ${i === picker.idx ? "text-white" : "text-neutral-500"}`}
+                >
+                  <span
+                    className={`h-[15px] w-[3px] shrink-0 ${i === picker.idx ? "bg-accent" : "bg-transparent"}`}
+                    aria-hidden="true"
+                  />
                   {site}
                 </p>
               ))

@@ -1,11 +1,8 @@
 import { Neofetch } from "@/components/neofetch";
 import { ShaderBackground } from "@/components/particle-field";
 import { RepoRow } from "@/components/repo-row";
-import { SocialLinks, socialLinks } from "@/components/social-links";
 import { TerminalPrompt } from "@/components/terminal-prompt";
 import type { GitHubRepo } from "@/lib/github";
-import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
@@ -101,54 +98,6 @@ export default function App({ repos }: { repos: GitHubRepo[] }) {
               : "mt-9 flex flex-col gap-[22px] sm:mt-11 sm:gap-4"
           }
         >
-          {!cleared && (
-            <>
-              <div className="flex flex-col gap-2.5">
-                <Prompt>
-                  <span>mail</span>
-                  <a
-                    href={`mailto:${MAIL}`}
-                    className="hidden border-b border-accent pb-px text-white transition-colors duration-200 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:inline"
-                  >
-                    {MAIL}
-                  </a>
-                </Prompt>
-                <a
-                  href={`mailto:${MAIL}`}
-                  className="ml-[22px] flex min-h-12 items-center justify-between rounded-lg border border-white/[0.14] bg-black/40 px-4 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:hidden"
-                >
-                  {MAIL}
-                  <span className="flex text-accent">
-                    <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} />
-                  </span>
-                </a>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                <Prompt>
-                  <span>open</span>
-                  <div className="ml-1 hidden sm:block">
-                    <SocialLinks />
-                  </div>
-                </Prompt>
-                <div className="ml-[22px] grid grid-cols-5 gap-2 sm:hidden">
-                  {socialLinks.map(({ url, label, icon }) => (
-                    <a
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`follow me on ${label}`}
-                      className="flex h-12 items-center justify-center rounded-lg border border-white/10 bg-black/40 text-neutral-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-                    >
-                      <HugeiconsIcon icon={icon} size={20} strokeWidth={1.5} />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
           <TerminalPrompt
             mail={MAIL}
             whoamiOutput={<Identity />}
