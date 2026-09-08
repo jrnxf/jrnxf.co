@@ -1,3 +1,4 @@
+import { disableLan, enableLan, LAN_URL } from "@/components/lan-link";
 import { Neofetch } from "@/components/neofetch";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -208,6 +209,18 @@ export function TerminalPrompt({
       case "reset":
         setEntries([]);
         onReset();
+        break;
+      // Hidden: not in help/tab-complete. Shows the status-line lan link and
+      // opens the LAN site; `lan off` hides the link again.
+      case "lan":
+        if (args[0] === "off") {
+          disableLan();
+          print(cmd, <p>lan link hidden</p>);
+        } else {
+          enableLan();
+          window.open(LAN_URL, "_blank", "noopener,noreferrer");
+          print(cmd, <p>opening lan ...</p>);
+        }
         break;
       case "sudo":
         print(cmd, <p>nice try.</p>);

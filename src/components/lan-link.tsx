@@ -1,31 +1,36 @@
 import { useEffect, useState } from "react";
 
-const LAN_URL = "https://lan.jrnxf.co";
+export const LAN_URL = "https://lan.jrnxf.co";
 
-// The hostname only resolves via local DNS (pihole) or the tailnet, so this
-// probe fails for everyone else and the link never renders. Reachability is
-// the gate; the name itself is public knowledge via CT logs.
+// No reachability probe: a background request from a public page to a private
+// address triggers Chrome's Local Network Access permission prompt. Instead the
+// link is gated by a localStorage flag, set via the hidden `lan` terminal
+// command. Top-level navigation to the LAN site never prompts. The hostname is
+// public knowledge anyway (CT logs); access is gated by DNS + the tailnet.
+const KEY = "lan";
+const EVENT = "lan-changed";
+
+export function enableLan() {
+  localStorage.setItem(KEY, "1");
+  window.dispatchEvent(new Event(EVENT));
+}
+
+export function disableLan() {
+  localStorage.removeItem(KEY);
+  window.dispatchEvent(new Event(EVENT));
+}
+
 export function LanLink() {
-  const [reachable, setReachable] = useState(false);
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    fetch(`${LAN_URL}/favicon.ico`, {
-      mode: "no-cors",
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(() => setReachable(true))
-      .catch(() => {})
-      .finally(() => clearTimeout(timeout));
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
+    const read = () => setShown(localStorage.getItem(KEY) === "1");
+    read();
+    window.addEventListener(EVENT, read);
+    return () => window.removeEventListener(EVENT, read);
   }, []);
 
-  if (!reachable) return null;
+  if (!shown) return null;
 
   return (
     <>
