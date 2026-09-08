@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export interface Weather {
-  temp: number;
+  tempF: number;
+  tempC: number;
   code: number;
   isDay: boolean;
 }
@@ -28,7 +29,8 @@ export const getWeather = createServerFn({ method: "GET" }).handler(
       const current = data.current;
       if (current?.temperature_2m == null || current.weather_code == null) return null;
       return {
-        temp: Math.round(current.temperature_2m),
+        tempF: Math.round(current.temperature_2m * 1.8 + 32),
+        tempC: Math.round(current.temperature_2m),
         code: current.weather_code,
         isDay: current.is_day === 1,
       };

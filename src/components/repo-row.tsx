@@ -8,7 +8,7 @@ export function RepoRow({ repo }: { repo: GitHubRepo }) {
       href={repo.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block border-b border-white/[0.08] text-[13px] text-neutral-400 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:-mx-3 sm:px-3 sm:hover:bg-white/5"
+      className="block border-b border-white/[0.08] text-[13px] text-neutral-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:-mx-3 sm:px-3 sm:hover:bg-white/5"
     >
       {/* mobile (<640px): stacked */}
       <div className="flex min-h-11 flex-col gap-[5px] py-3.5 sm:hidden">
