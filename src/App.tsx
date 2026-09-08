@@ -1,3 +1,4 @@
+import { LanLink } from "@/components/lan-link";
 import { Neofetch } from "@/components/neofetch";
 import { ShaderBackground } from "@/components/particle-field";
 import { RepoRow } from "@/components/repo-row";
@@ -41,6 +42,7 @@ export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: 
         <div className="flex justify-between text-xs tracking-[0.02em] text-neutral-500">
           <span>colby@jrnxf ~</span>
           <span className="flex items-center gap-2">
+            <LanLink />
             <span className="sm:hidden">vila chã, pt</span>
             <span className="hidden sm:inline">vila chã, portugal</span>
             {weather && (
