@@ -31,7 +31,6 @@ function RepoTable({ repos }: { repos: GitHubRepo[] }) {
 }
 
 export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: Weather | null }) {
-  const sorted = [...repos].sort((a, b) => b.stars - a.stars);
   const [cleared, setCleared] = useState(false);
 
   return (
@@ -73,7 +72,7 @@ export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: 
               </Prompt>
             </div>
             <div className="ml-[22px] mt-3 sm:ml-[26px] sm:mt-3.5">
-              <RepoTable repos={sorted} />
+              <RepoTable repos={repos} />
             </div>
           </>
         )}
@@ -88,7 +87,7 @@ export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: 
         >
           <TerminalPrompt
             mail={MAIL}
-            lsOutput={<RepoTable repos={sorted} />}
+            lsOutput={<RepoTable repos={repos} />}
             onClear={() => setCleared(true)}
             onReset={() => setCleared(false)}
           />
