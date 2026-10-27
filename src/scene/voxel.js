@@ -1,6 +1,7 @@
 // A voxel room: a person at their desk by a window onto the sea, with terminals at work on the
 // monitor. Written against three r128.
 
+import { MARK } from "./mark.js";
 import { paintTerminals } from "./terminals.js";
 
 const LIGHTS = {
@@ -112,7 +113,7 @@ export function headVoxels(Hd, C, cap = "back") {
   // in profile the front of the face is flatter than the back of the skull
   const shape = (dx, dy, dz) => (dz < 0 ? shapeRound(dx, dy, dz * f.front) : shapeRound(dx, dy, dz * 1.03));
   const eHead = (x, y, z) => shape(x - hc[0], y - hc[1], z - hc[2]);
-  Hd.fill(29, 20, 22, 33, 23, 25, (x, y, z) => Math.hypot(x - cx, z - 23.7) < 1.25, C.skin, 0.02);
+  Hd.fill(29, 20, 22, 33, 23, 25, (x, y, z) => Math.hypot(x - cx, z - 24.1) < 1.25, C.skin, 0.02);
   Hd.fill(28, 20, 20, 34, 29, 27, (x, y, z) => {
     if (eHead(x, y, z) >= 1) return null;
     const back = Math.min(1, Math.max(0, (z - 21.2) / 2.4)), top = mouthY + 0.25 + back ** 0.8 * (24.35 - mouthY - 0.25);
@@ -170,7 +171,7 @@ export function headVoxels(Hd, C, cap = "back") {
 }
 
 export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, backdrop = null, cap = "back" } = {}) {
-  const C = { wall: "#e9e1d3", floor: "#b98a5e", floor2: "#a97a50", desk: "#2a1a10", legs: "#161618", metal: "#2b2b2e", alu: "#c9c9cc", ...HEAD_COLORS, shirt: "#fbfaf7", shirtRib: "#efede8", sweater: "#ad7646", sweaterRib: "#99653a", pants: "#c9b38a", pantsCuff: "#d8c49e", cork: "#c49a68", strap: "#4a3326", sock: "#f4f2ec", shoe: "#1d1d20", chairFrame: "#26262a", mesh: "#55555b", mesh2: "#3e3e44", plant: "#4f8a4a", pot: "#d9cbb4", mug: "#f3ecdf", tire: "#1b1b1d", rim: "#c9c9cc", uni: "#fb9890", frame: "#f3ecdf" };
+  const C = { wall: "#e9e1d3", floor: "#b98a5e", floor2: "#a97a50", desk: "#2a1a10", legs: "#161618", metal: "#2b2b2e", alu: "#c9c9cc", ...HEAD_COLORS, shirt: "#fffefc", shirtRib: "#f4f2ee", sweater: "#ad7646", sweaterRib: "#99653a", pants: "#c9b38a", pantsCuff: "#d8c49e", cork: "#c49a68", strap: "#4a3326", sock: "#f4f2ec", shoe: "#1d1d20", chairFrame: "#26262a", mesh: "#3c3c41", mesh2: "#2a2a2f", plant: "#4f8a4a", pot: "#d9cbb4", mug: "#f3ecdf", tire: "#1b1b1d", rim: "#c9c9cc", uni: "#fb9890", frame: "#f3ecdf" };
   const root = new THREE.Group();
   const k = Math.max(1, Math.min(4, Math.round(res * 2) / 2));
   const V = makeVox(k, [1, -4, -1], [62, 36, 41]);
@@ -194,12 +195,12 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   const legZ = 8.5;
   for (const lx of [17, 45]) {
     fill(lx - 1, 2, 7, lx + 1, 11, 10, (x, y, z) => Math.abs(x - lx) < 0.7 && Math.abs(z - legZ) < 0.7, C.legs, 0.01);
-    fill(lx - 1, 12, 4, lx + 1, 12, 13, (x, y, z) => Math.abs(x - lx) < 0.5 && Math.abs(z - legZ) < 4.6 && y > 11.8, C.legs, 0.01);
-    fill(lx - 1, 1, 3, lx + 1, 1, 14, (x, y, z) => Math.abs(x - lx) < 0.5 && Math.abs(z - legZ) < 5.4 - Math.max(0, y - 0.9) * 2.5, C.legs, 0.01);
+    fill(lx - 1, 12, 4, lx + 1, 12, 13, (x, y, z) => Math.abs(x - lx) < 0.7 && Math.abs(z - legZ) < 4.6 && y > 11.8, C.legs, 0.01);
+    fill(lx - 1, 1, 3, lx + 1, 1, 14, (x, y, z) => Math.abs(x - lx) < 0.7 && Math.abs(z - legZ) < 5.2, C.legs, 0.01);
   }
   fill(18, 10, 8, 44, 11, 9, (x, y, z) => Math.abs(z - legZ) < 0.35 && Math.abs(y - 11) < 0.35, C.legs, 0.01);
   // one monitor, centred on a stand
-  box(29, 14, 6, 33, 14, 9, C.metal, 0.01); box(31, 15, 6, 31, 17, 6, C.metal, 0.01); box(22, 17, 5, 40, 28, 5, C.metal, 0.01);
+  box(29, 14, 6, 33, 14, 9, C.legs, 0.01); box(31, 15, 6, 31, 17, 6, C.legs, 0.01); box(22, 17, 5, 40, 28, 5, C.legs, 0.01);
   // a keyboard and a mouse within reach
   fill(25, 14, 11, 37, 14, 14, (x, y, z) => (Math.abs(x - 31) < 5.3 && z > 11.2 && z < 13.6 ? (((x * 2 + 100) | 0) % 2 && ((z * 2 + 100) | 0) % 2 && z > 11.5 && z < 13.3 && Math.abs(x - 31) < 5 ? "#c9c6bf" : "#e2dfd8") : null), "#e2dfd8", 0.01);
   fill(37, 14, 11, 40, 14, 14, (x, y, z) => (((x - 38.6) / 0.62) ** 2 + ((z - 12.5) / 0.95) ** 2 < 1 ? "#e2dfd8" : null), "#e2dfd8", 0.01);
@@ -209,13 +210,13 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   fill(40, 15.7, 10, 43, 15.7, 12, (x, y, z) => Math.hypot(x - mugC[0], z - mugC[1]) < 0.72, "#4a2c17", 0);
   fill(42, 14, 10, 44, 16, 12, (x, y, z) => Math.abs(Math.hypot(x - (mugC[0] + 1.05), y - 15.15) - 0.5) < 0.2 && Math.abs(z - mugC[1]) < 0.22 && x > mugC[0] + 1.0, C.mug, 0.02);
   // a working flip clock to the right of the monitor (its face is a canvas, drawn below)
-  fill(40, 14, 5, 46, 14, 9, (x, y, z) => (Math.abs(x - 43) < 2.4 && Math.abs(z - 7) < 1.2 ? "#6b4428" : null), "#6b4428", 0.03);
-  fill(40, 15, 5, 46, 18, 9, (x, y, z) => { const r = Math.hypot(y - 16.55, z - 7.0); if (Math.abs(x - 43) < 0.3 && y < 18.4 && z > 6.1 && z < 7.7) return "#101012"; return Math.abs(x - 43) < 2.3 && Math.abs(x - 43) > 0.32 && r < 1.05 && z < 7.75 ? (r > 0.92 ? "#0b0b0c" : "#151517") : null; }, "#151517", 0.01);
+  fill(40, 14, 5, 46, 14, 9, (x, y, z) => (Math.abs(x - 43) < 2.4 && Math.abs(z - 7) < 1.2 && y < 13.5 + 0.8 ? "#38220f" : null), "#38220f", 0.03);
+  fill(40, 14, 5, 46, 18, 9, (x, y, z) => { const r = Math.hypot(y - 16.55, z - 7.0); if (Math.abs(x - 43) < 0.3 && y > 13.5 + 0.8 && y < 18.0 && z > 6.1 && z < 7.7) return "#101012"; return Math.abs(x - 43) < 2.3 && Math.abs(x - 43) > 0.32 && r < 1.05 && z < 7.75 ? (r > 0.92 ? "#0b0b0c" : "#151517") : null; }, "#151517", 0.01);
   // a bonsai: a shallow glazed pot, a twisting trunk and flat cloud pads of leaves
   fill(15, 14, 4, 21, 15, 9, (x, y, z) => (Math.abs(x - 18) < 2.5 - (y > 14.6 ? 0 : 0.15) && Math.abs(z - 6.5) < 1.6 ? (y > 14.7 && Math.abs(x - 18) < 2.2 && Math.abs(z - 6.5) < 1.3 ? "#5b4636" : "#2f4a5a") : null), "#2f4a5a", 0.02);
   const trunk = [[18, 15, 6.5], [17.4, 16.6, 6.2], [18.3, 18.0, 6.6], [19.3, 19.1, 6.3], [18.6, 20.2, 6.0]];
   fill(15, 15, 4, 21, 21, 9, (x, y, z) => { for (let i = 0; i < trunk.length - 1; i++) if (segDist([x, y, z], trunk[i], trunk[i + 1]) < 0.42 - i * 0.05) return "#5a4030"; return null; }, "#5a4030", 0.04);
-  for (const [cx, cy, cz, rx] of [[16.4, 18.3, 6.4, 1.3], [19.8, 19.4, 6.6, 1.3], [18.4, 21.0, 6.1, 1.6], [17.6, 17.1, 7.2, 0.9]]) fill(14, 16, 4, 22, 22, 9, (x, y, z) => (((x - cx) / rx) ** 2 + ((y - cy) / 0.6) ** 2 + ((z - cz) / (rx * 0.85)) ** 2 < 1 + Math.sin(x * 5.1 + z * 4.3) * 0.15 ? (y > cy + 0.15 ? "#5e8f4a" : "#46733a") : null), "#4f8a4a", 0.08);
+  for (const [cx, cy, cz, rx] of [[16.4, 18.3, 6.4, 1.3], [19.8, 19.4, 6.6, 1.3], [18.4, 21.0, 6.1, 1.6], [17.6, 17.1, 7.2, 0.9]]) fill(14, 16, 4, 22, 22, 9, (x, y, z) => (((x - cx) / rx) ** 2 + ((y - cy) / 0.6) ** 2 + ((z - cz) / (rx * 0.85)) ** 2 < 1 + Math.sin(x * 5.1 + z * 4.3) * 0.15 ? (y > cy + 0.15 ? "#4b7a3a" : "#365c2c") : null), "#4f8a4a", 0.08);
   // no lamp
   // the person sits closer to the desk; the chair moves with them, in a grid of its own
   const NEAR = 2.4, CH = makeVox(k, [24, -1, 15], [39, 22, 32]);
@@ -257,13 +258,13 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
     const wx = 2.75 + 0.55 * Math.sin(Math.min(1, t * 1.25) * Math.PI / 2) + 0.55 * Math.max(0, t - 0.7) / 0.3 - 1.5 * Math.max(0, t - 0.9) ** 2 / 0.01 * 0.1;
     const wz = 1.95 + 0.3 * Math.sin(t * Math.PI * 0.8);
     // the chest is shallower in front than the back is behind, so the profile stays flat
-    const v = (Math.abs(x - 31) / (wx + 0.3)) ** 2.5 + (Math.abs(z - cz) / (z < cz ? wz * 0.8 : wz)) ** 2.5;
+    const v = (Math.abs(x - 31) / (wx + 0.3)) ** 2.5 + (Math.abs(z - cz) / (z < cz ? wz * 0.8 - 0.4 * Math.min(1, Math.max(0, (t - 0.5) / 0.25)) : wz)) ** 2.5;
     if (v > 1 + 0.07 * Math.sin(y * 3.1 + x * 1.7) * (1 - t)) return null;
     const shoulder = Math.max(0, Math.abs(x - 31) - 1.4) * 0.42; if (y > 20.7 - shoulder) return null;
     return y < 12.3 ? C.shirtRib : C.shirt;
   }, C.shirt, 0.025);
   for (const sx of [-1, 1]) P.fill(27, 17, 20, 36, 21, 26, (x, y, z) => (ell([x, y, z], [31 + sx * 3.35, 19.1, 22.95], [1.3, 1.25, 1.35]) < 1 ? C.shirt : null), C.shirt, 0.025);
-  P.fill(29, 19, 22, 33, 23, 26, (x, y, z) => { const r = Math.hypot(x - 31, z - 23.5); return y > 20.1 && y < 20.7 && r < 1.35 ? C.shirtRib : y >= 20.7 && r < 1.0 ? C.skin : null; }, C.skin, 0.02);
+  P.fill(29, 19, 22, 33, 23, 26, (x, y, z) => { const r = Math.hypot(x - 31, z - 23.9); return y > 20.1 && y < 20.7 && r < 1.35 ? C.shirtRib : y >= 20.7 && r < 1.0 ? C.skin : null; }, C.skin, 0.02);
   // khaki trousers: hips, thighs along the seat, shins down, the hems rolled above the ankles
   P.fill(27, 9, 21, 35, 13, 26, (x, y, z) => (ell([x, y, z], [31, 11.3, 23.7], [3.0, 1.35, 2.0]) < 1 ? C.pants : null), C.pants, 0.025);
   for (const sx of [-1, 1]) {
@@ -318,6 +319,8 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
 
   // screens: canvases drawn every frame or so
   const mon = canvasPlane(THREE, 640, 360, 18.2, 10.24); mon.mesh.position.set(31, 22.5, 5.8); root.add(mon.mesh);
+  // the jrnxf mark on the back of the monitor, in a soft grey, read from behind
+  root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
   // the view out of the window
   const view = canvasPlane(THREE, 512, 288, 30, 17); view.mesh.position.set(31, 22.5, -0.62); backWall.add(view.mesh);
 
@@ -451,6 +454,16 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   return { root, hit, update, viewFrom, setLight, setCap, highlight };
 }
 
+function markPlane(THREE, width, colour, [px, py, pz]) {
+  const [vx, vy, vw, vh] = MARK.regular.vb.split(" ").map(Number);
+  const canvas = document.createElement("canvas"); canvas.width = 512; canvas.height = Math.round((512 * vh) / vw);
+  const x = canvas.getContext("2d"), s = 512 / vw;
+  x.setTransform(s, 0, 0, s, -vx * s, -vy * s); x.fillStyle = colour; x.fill(new Path2D(MARK.regular.d), "evenodd");
+  const tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, (width * vh) / vw), new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false }));
+  mesh.position.set(px, py, pz); mesh.rotation.y = Math.PI;
+  return mesh;
+}
 function canvasPlane(THREE, cw, ch, w, h) {
   const canvas = document.createElement("canvas"); canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext("2d");
