@@ -100,7 +100,7 @@ export function DeskScene() {
           chrome,
         )}
       >
-        {phone ? "swipe sideways to look · tap the monitor" : "drag to look around · click the monitor"}
+        {phone ? "swipe sideways to look · tap the mug" : "drag to look around · click the mug or the window"}
       </div>
     </section>
   );

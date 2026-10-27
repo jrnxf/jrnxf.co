@@ -1,7 +1,7 @@
-// A voxel room: a person at their desk by a window onto the sea. One monitor switches between
-// drip cards oozing from its top edge and okfs's Twin Pane. Written against three r128.
+// A voxel room: a person at their desk by a window onto the sea, with terminals at work on the
+// monitor. Written against three r128.
 
-import { scene as paintScene } from "./okfs.js";
+import { paintTerminals } from "./terminals.js";
 
 const LIGHTS = {
   golden: { sky: ["#3a3f73", "#f0a37c", "#ffd9a8"], sun: "#ffc98a", sunPos: [0.62, 0.62], sea: ["#a86a73", "#3a3456"], hemi: ["#ffe2c4", "#3a2e34", 0.36], key: ["#ffb070", 2.1], amb: 0.05, lamp: 0, night: 0 },
@@ -169,7 +169,7 @@ export function headVoxels(Hd, C) {
   }, C.cap, 0.02);
 }
 
-export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 } = {}) {
+export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, backdrop = null } = {}) {
   const C = { wall: "#e9e1d3", floor: "#b98a5e", floor2: "#a97a50", desk: "#2a1a10", deskEdge: "#1c110a", legs: "#161618", metal: "#2b2b2e", alu: "#c9c9cc", ...HEAD_COLORS, shirt: "#f3f1ec", shirtRib: "#e2dfd8", sweater: "#ad7646", sweaterRib: "#99653a", pants: "#c9b38a", pantsCuff: "#d8c49e", cork: "#c49a68", strap: "#4a3326", sock: "#f4f2ec", shoe: "#1d1d20", chairFrame: "#26262a", mesh: "#55555b", mesh2: "#3e3e44", plant: "#4f8a4a", pot: "#d9cbb4", mug: "#f3ecdf", tire: "#1b1b1d", rim: "#c9c9cc", uni: "#fb9890", frame: "#f3ecdf" };
   const root = new THREE.Group();
   const k = Math.max(1, Math.min(4, Math.round(res * 2) / 2));
@@ -178,7 +178,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
   // the room spans x 2 to 60, centred on the desk at x 31
   const X0 = 2, X1 = 60, D = 40, H = 34;
   // room: floor planks and a back wall with a window; no side wall, so the room stays open on the left
-  for (let z = 0; z < D; z++) box(X0, 0, z, X1, 0, z, Math.floor(z / 4) % 2 ? C.floor : C.floor2, 0.05);
+  if (!backdrop) for (let z = 0; z < D; z++) box(X0, 0, z, X1, 0, z, Math.floor(z / 4) % 2 ? C.floor : C.floor2, 0.05);
   // the back wall is a separate mesh, hidden when the camera is behind it, so the room orbits 360°
   const BW = makeVox(k, [1, 0, -1], [62, 36, 4]);
   BW.box(X0, 1, 0, X1, H, 0, C.wall, 0.02);
@@ -199,7 +199,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
     fill(lx - 1, 1, 3, lx + 1, 1, 14, (x, y, z) => Math.abs(x - lx) < 0.5 && Math.abs(z - legZ) < 5.4 - Math.max(0, y - 0.9) * 2.5, C.legs, 0.01);
   }
   fill(18, 10, 8, 44, 11, 9, (x, y, z) => Math.abs(z - legZ) < 0.35 && Math.abs(y - 11) < 0.35, C.legs, 0.01);
-  // one monitor, centred on a stand; it switches between drip (cards oozing from its top edge) and okfs
+  // one monitor, centred on a stand
   box(29, 14, 6, 33, 14, 9, C.metal, 0.01); box(31, 15, 6, 31, 17, 6, C.metal, 0.01); box(22, 17, 5, 40, 28, 5, C.metal, 0.01);
   // a keyboard and a mouse within reach
   fill(25, 14, 11, 37, 14, 14, (x, y, z) => (Math.abs(x - 31) < 5.3 && z > 11.2 && z < 13.6 ? (((x * 2 + 100) | 0) % 2 && ((z * 2 + 100) | 0) % 2 && z > 11.5 && z < 13.3 && Math.abs(x - 31) < 5 ? "#c9c6bf" : "#e2dfd8") : null), "#e2dfd8", 0.01);
@@ -239,6 +239,12 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
   const roomMesh = V.mesh(THREE, shadows), backWall = new THREE.Group();
   backWall.add(BW.mesh(THREE, shadows));
   root.add(roomMesh, backWall);
+  // a void: no floor or walls, only a soft shadow on an invisible floor to stand the desk on
+  if (backdrop) {
+    backWall.visible = false;
+    const catcher = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), new THREE.ShadowMaterial({ opacity: backdrop === "white" ? 0.14 : 0.5 }));
+    catcher.rotation.x = -Math.PI / 2; catcher.position.set(31, 0.5, 14); catcher.receiveShadow = shadows; root.add(catcher);
+  }
   const chairVox = CH.mesh(THREE, shadows); chairVox.position.z = -NEAR; root.add(chairVox);
 
   // the person, in their own groups so they can move
@@ -314,7 +320,6 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
   const mon = canvasPlane(THREE, 640, 360, 18.2, 10.24); mon.mesh.position.set(31, 22.5, 5.8); root.add(mon.mesh);
   // the view out of the window
   const view = canvasPlane(THREE, 512, 288, 30, 17); view.mesh.position.set(31, 22.5, -0.62); backWall.add(view.mesh);
-  const photo = new Image(); photo.src = paintScene({ c: ["#3a1440", "#ff7a3d", "#ffe08a", "#e0623d", "#2a1033", "#160a1c"], sx: 900, sy: 690, sr: 110 });
 
   // golden hour: a soft beam from the window, and the warm patch it leaves on the floor
   const beamTex = (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 256; const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, "rgba(255,200,130,.9)"); g.addColorStop(1, "rgba(255,200,130,0)"); x.fillStyle = g; x.fillRect(0, 0, 64, 256); const t = new THREE.CanvasTexture(c); return t; })();
@@ -372,80 +377,9 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
   // click targets
   const hit = {};
   const target = (name, x0, y0, z0, x1, y1, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1), new THREE.MeshBasicMaterial({ visible: false })); m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); m.userData.name = name; root.add(m); hit[name] = m; };
-  target("monitor", 21, 14, 4, 41, 29, 9); target("mug", 40, 13, 10, 43, 17, 13); target("window", wx0, wy0, -1, wx1, wy1, 1);
+  target("mug", 40, 13, 10, 43, 17, 13); target("window", wx0, wy0, -1, wx1, wy1, 1);
   const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xfb9890, transparent: true, opacity: 0.9 }));
   outline.visible = false; root.add(outline);
-
-  // ---------- drip on the monitor: the card oozes out of the top edge, as drip does on a screen without a notch ----------
-  const KIND = { ok: "#30d158", warn: "#ff9f0a", fail: "#ff453a", info: "#0a84ff" };
-  let card = null; const queue = [];
-  function laptopCard(c) { if (c.id && card && card.c.id === c.id) { card = { c, t0: card.t0, swapped: performance.now() }; return; } if (queue.length > 1) queue.shift(); queue.push(c); }
-  function drawLaptop(now, reduced) {
-    const x = mon.ctx, w = 640, h = 360;
-    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#1f3a5c"); g.addColorStop(0.55, "#6f93b3"); g.addColorStop(0.56, "#2f6688"); g.addColorStop(1, "#12324a");
-    x.fillStyle = g; x.fillRect(0, 0, w, h);
-    x.fillStyle = "rgba(0,0,0,.28)"; x.fillRect(0, 0, w, 22);
-    x.fillStyle = "rgba(255,255,255,.75)"; x.font = "600 11px -apple-system,system-ui,sans-serif"; x.fillText("", 10, 15); x.fillText("Terminal", 24, 15);
-    const nw = 0, nh = 10;
-    if (!card && queue.length) card = { c: queue.shift(), t0: now };
-    if (card) {
-      const c = card.c, el = (now - card.t0) / 1000, life = c.stay || c.yes ? 9 : 4.2;
-      if (el > life + 0.6) card = null;
-      else {
-        const inP = reduced ? 1 : Math.min(1, el / 0.6), outP = reduced ? (el > life ? 1 : 0) : Math.max(0, (el - life) / 0.6);
-        const p = inP * (1 - outP);
-        x.font = "600 15px -apple-system,system-ui,sans-serif"; const tw = Math.max(x.measureText(c.title).width, (x.font = "13px -apple-system,system-ui,sans-serif", x.measureText(c.detail || "").width));
-        const cw = Math.min(w - 30, tw + 110), ch = 52;
-        const ww = 26 + (cw - 26) * easeOut(Math.max(0, (p - 0.3) / 0.7)), hh = 26 + (ch - 26) * easeOut(Math.max(0, (p - 0.3) / 0.7));
-        const top = nh - 14 + 22 * easeOut(Math.min(1, p / 0.4));
-        x.fillStyle = "#000"; roundRect(x, w / 2 - ww / 2, top, ww, hh, hh / 2); x.fill();
-        if (p > 0.75) {
-          x.globalAlpha = (p - 0.75) / 0.25;
-          const lx = w / 2 - cw / 2 + 12, cy = top + ch / 2;
-          if (c.icon === "agent") { x.fillStyle = "#1c1c1e"; roundRect(x, lx, cy - 15, 30, 30, 7); x.fill(); x.strokeStyle = "#fb9890"; x.lineWidth = 2.4; x.beginPath(); for (const a of [0, 45, 90, 135]) { const r = (a * Math.PI) / 180; x.moveTo(lx + 15 - Math.cos(r) * 9, cy - Math.sin(r) * 9); x.lineTo(lx + 15 + Math.cos(r) * 9, cy + Math.sin(r) * 9); } x.stroke(); }
-          else { x.fillStyle = KIND[c.kind]; x.beginPath(); x.arc(lx + 15, cy, 15, 0, 7); x.fill(); x.strokeStyle = "#000"; x.lineWidth = 3; x.lineCap = "round"; x.beginPath(); if (c.kind === "ok") { x.moveTo(lx + 9, cy); x.lineTo(lx + 13.5, cy + 4.5); x.lineTo(lx + 21, cy - 4); } else if (c.kind === "fail") { x.moveTo(lx + 10, cy - 5); x.lineTo(lx + 20, cy + 5); x.moveTo(lx + 20, cy - 5); x.lineTo(lx + 10, cy + 5); } else { x.moveTo(lx + 15, cy - 6); x.lineTo(lx + 15, cy + 2); x.moveTo(lx + 15, cy + 6); x.lineTo(lx + 15, cy + 6.5); } x.stroke(); }
-          x.fillStyle = "#fff"; x.font = "600 15px -apple-system,system-ui,sans-serif"; x.fillText(c.title, lx + 40, cy - 3);
-          x.fillStyle = "rgba(235,235,245,.6)"; x.font = "13px -apple-system,system-ui,sans-serif"; x.fillText(c.detail || "", lx + 40, cy + 14);
-          const rx = w / 2 + cw / 2 - 26;
-          if (c.yes) { x.fillStyle = "rgba(255,255,255,.15)"; roundRect(x, rx - 92, cy - 12, 50, 24, 12); x.fill(); x.fillStyle = { ok: "#248a3d", warn: "#b25000", fail: "#d70015", info: "#0060df" }[c.kind]; roundRect(x, rx - 38, cy - 12, 52, 24, 12); x.fill(); x.fillStyle = "#fff"; x.font = "600 11px -apple-system,system-ui,sans-serif"; x.fillText(c.no || "No", rx - 84, cy + 4); x.fillText(c.yes, rx - 31, cy + 4); }
-          else if (c.stay) { const pg = ((now / 2400) % 1); x.fillStyle = `rgba(255,255,255,${0.6 * (1 - pg)})`; x.beginPath(); x.arc(rx, cy, 4 + pg * 6, 0, 7); x.fill(); x.fillStyle = "#fff"; x.beginPath(); x.arc(rx, cy, 4, 0, 7); x.fill(); }
-          else { x.strokeStyle = "rgba(255,255,255,.15)"; x.lineWidth = 2.5; x.beginPath(); x.arc(rx, cy, 10, 0, 7); x.stroke(); x.strokeStyle = c.icon === "agent" ? "#fff" : KIND[c.kind]; x.beginPath(); x.arc(rx, cy, 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, 1 - el / life)); x.stroke(); }
-          x.globalAlpha = 1;
-        }
-      }
-    }
-    mon.tex.needsUpdate = true;
-  }
-
-  // ---------- okfs on the monitor ----------
-  const FILES = [["photos", "folder", "4"], ["boards", "folder", "2"], ["src", "folder", "2"], ["README.md", "doc", "512 B"], ["forecast.json", "data", "623 B"], ["season-2026.zip", "archive", "5.7 MB"], ["sunset-set.jpg", "image", "1.9 MB"], ["surf-log.md", "doc", "887 B"], ["tide-table.csv", "data", "990 B"], ["waves.wav", "media", "172 KB"]];
-  const KC = { folder: "#7c9cf0", doc: "#9a9a96", data: "#d9b44a", archive: "#a892ea", image: "#d98bcb", media: "#f0975a" };
-  let cur = 6, monTheme = "dark";
-  function drawMonitor(now, reduced) {
-    const x = mon.ctx, w = 640, h = 360;
-    const T = monTheme === "dark" ? { bg: "#0d0d0e", line: "#232325", fg: "#ededeb", faint: "#76766f", acc: "#ff6a36", soft: "#2a1710" } : { bg: "#f5f0e6", line: "#ddd4c2", fg: "#2a2520", faint: "#8c8272", acc: "#2d6a4f", soft: "#dfe8dc" };
-    if (!reduced) cur = 4 + (Math.floor(now / 1400) % 6);
-    x.fillStyle = T.bg; x.fillRect(0, 0, w, h);
-    x.fillStyle = T.fg; x.fillRect(14, 12, 4, 14); x.fillRect(20, 12, 4, 14); x.fillStyle = T.acc; x.fillRect(26, 12, 7, 14);
-    x.fillStyle = T.fg; x.font = "600 13px Geist,system-ui,sans-serif"; x.fillText("okfs", 40, 24); x.font = "600 13px Geist,system-ui,sans-serif"; x.fillText("praia", 80, 24);
-    x.strokeStyle = T.line; x.lineWidth = 1; roundRect(x, w - 190, 8, 150, 22, 5); x.stroke(); x.fillStyle = T.faint; x.font = "11px Geist,system-ui,sans-serif"; x.fillText("Find anything   Ctrl K", w - 180, 23);
-    x.fillStyle = T.line; x.fillRect(0, 38, w, 1); x.fillRect(230, 38, 1, h - 62); x.fillRect(0, h - 24, w, 1);
-    FILES.forEach(([n, k, s], i) => {
-      const y = 50 + i * 26;
-      if (i === cur) { x.fillStyle = T.soft; x.fillRect(0, y - 4, 230, 26); x.fillStyle = T.acc; x.fillRect(0, y - 4, 3, 26); }
-      x.fillStyle = KC[k]; x.fillRect(14, y + 3, 11, 11);
-      x.fillStyle = T.fg; x.font = "12.5px Geist,system-ui,sans-serif"; x.fillText(n, 34, y + 13);
-      x.fillStyle = T.faint; x.font = "11px Geist Mono,monospace"; x.textAlign = "right"; x.fillText(s, 220, y + 13); x.textAlign = "left";
-    });
-    const [n, k] = FILES[cur];
-    x.fillStyle = T.fg; x.font = "600 13px Geist,system-ui,sans-serif"; x.fillText(n, 248, 58);
-    x.fillStyle = T.line; x.fillRect(231, 70, w, 1);
-    if (k === "image" || k === "folder") { if (photo.complete) x.drawImage(photo, 248, 84, 376, 251); }
-    else { x.fillStyle = T.faint; x.font = "12px Geist Mono,monospace"; ["# " + n.replace(/\..*/, ""), "", "Photos, tide tables and a", "surf log from one beach on", "the north coast of Portugal."].forEach((l, i) => x.fillText(l, 252, 98 + i * 20)); }
-    x.fillStyle = T.acc; roundRect(x, 10, h - 19, 56, 15, 3); x.fill(); x.fillStyle = monTheme === "dark" ? "#160a04" : "#fff"; x.font = "600 9.5px Geist Mono,monospace"; x.fillText("BROWSE", 17, h - 8);
-    x.fillStyle = T.faint; x.font = "10.5px Geist Mono,monospace"; x.fillText("10 items · 7.8 MB · by name", 76, h - 8); x.fillText("j k move · ↵ open · r source", w - 190, h - 8);
-    mon.tex.needsUpdate = true;
-  }
 
   // ---------- the view, and the light ----------
   let L = LIGHTS[light];
@@ -471,19 +405,21 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
     key.color.set(L.key[0]); key.intensity = L.key[1]; amb.intensity = L.amb;
     lamp.intensity = L.lamp; glow.intensity = L.night ? 0.9 : 0;
     if (name === "golden") key.position.set(40, 42, -58); else if (name === "day") key.position.set(18, 70, -36); else key.position.set(20, 40, -40);
-    monTheme = name === "day" ? "light" : "dark";
-    patch.visible = name === "golden";
+    patch.visible = name === "golden" && !backdrop;
+    // in a void the light comes from over the viewer's shoulder, bright and even, so the figure reads in full
+    if (backdrop) {
+      hemi.color.set("#fff6ea"); hemi.groundColor.set(backdrop === "white" ? "#8a837a" : "#2a2624"); hemi.intensity = 0.32;
+      key.color.set("#ffe2c0"); key.intensity = 1.1; key.position.set(70, 60, 50); amb.intensity = 0.04;
+    }
   }
   setLight(light);
 
   // ---------- motion ----------
-  let frames = 0, lastDraw = 0, screen = "drip", switchAt = performance.now() + 9000, switched = 0, held = false;
-  function setScreen(name, hold) { if (name !== screen) { screen = name; switched = performance.now(); } held = !!hold; switchAt = performance.now() + (hold ? 1e9 : 9000); }
+  let frames = 0, lastDraw = 0;
   function update(now, reduced) {
     // some software WebGL drivers keep a new canvas texture blank after the room is rebuilt; swapping in a
     // fresh texture once, after the first frames, makes the screen show reliably
     if (++frames === 6) { const old = mon.mesh.material.map, t = new THREE.CanvasTexture(mon.canvas); t.encoding = THREE.sRGBEncoding; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; mon.mesh.material.map = t; mon.tex = t; mon.mesh.material.needsUpdate = true; old.dispose(); }
-    if (!held && now > switchAt) { screen = screen === "drip" ? "okfs" : "drip"; switched = now; switchAt = now + (screen === "drip" ? 9000 : 8000); }
     if (!reduced) {
       // typing in bursts: each hand taps on its own rhythm; every few seconds the right hand reaches for the trackpad
       const burst = Math.sin(now / 1900) > -0.35, reach = (now / 1000) % 9 > 7.4;
@@ -495,8 +431,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
       }
       head.position.x = Math.sin(now / 4200) * 0.18;
     }
-    if (now - lastDraw > 66) { lastDraw = now; if (screen === "drip") drawLaptop(now, reduced); else drawMonitor(now, reduced);
-      const fade = reduced ? 0 : 1 - (now - switched) / 260; if (fade > 0) { mon.ctx.fillStyle = `rgba(0,0,0,${fade})`; mon.ctx.fillRect(0, 0, 640, 360); mon.tex.needsUpdate = true; }
+    if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000); mon.tex.needsUpdate = true;
       drawView(now, reduced); drawClock(now, reduced); }
     drawSteam(now, reduced);
   }
@@ -505,10 +440,8 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5 }
     const m = hit[name]; outline.visible = true; outline.position.copy(m.position); outline.scale.copy(new THREE.Vector3(m.geometry.parameters.width + 0.6, m.geometry.parameters.height + 0.6, m.geometry.parameters.depth + 0.6));
   }
   // hides a wall while the camera is behind it
-  function viewFrom(p) { backWall.visible = p.z > 1.5; }
-  return { root, hit, update, viewFrom, setLight, laptopCard, setScreen, get screen() { return screen; }, highlight, poses: {
-    monitor: { pos: [38.5, 27.5, 27], look: [31, 22.5, 5.8] },
-  } };
+  function viewFrom(p) { backWall.visible = !backdrop && p.z > 1.5; }
+  return { root, hit, update, viewFrom, setLight, highlight };
 }
 
 function canvasPlane(THREE, cw, ch, w, h) {
@@ -518,5 +451,3 @@ function canvasPlane(THREE, cw, ch, w, h) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
   return { canvas, ctx, tex, mesh };
 }
-function roundRect(x, a, b, w, h, r) { r = Math.min(r, w / 2, h / 2); x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
-function easeOut(t) { return 1 - (1 - t) ** 3; }
