@@ -39,7 +39,7 @@ const lisbonH = () => { const [h, m] = lisbon().split(":").map(Number); return h
 // the room is built at 2.5 voxels per scene unit, the density the captain chose
 const RES = 2.5;
 
-export function startDesk({ stage, light = "golden", backdrop = null, onOpenChange }) {
+export function startDesk({ stage, light = "golden", backdrop = null, cap = "back", onOpenChange }) {
   if (!document.getElementById("desk-css")) { const st = document.createElement("style"); st.id = "desk-css"; st.textContent = CSS; document.head.append(st); }
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const phone = () => innerWidth < 720;
@@ -53,7 +53,7 @@ export function startDesk({ stage, light = "golden", backdrop = null, onOpenChan
   // a vertical swipe still scrolls the page on touch; a sideways drag turns the room
   renderer.domElement.style.touchAction = "pan-y";
   const scene = new THREE.Scene();
-  const desk = buildDesk(THREE, { light, shadows: true, res: RES, backdrop });
+  const desk = buildDesk(THREE, { light, shadows: true, res: RES, backdrop, cap });
   scene.add(desk.root);
 
   // ---------- camera ----------
@@ -157,6 +157,6 @@ export function startDesk({ stage, light = "golden", backdrop = null, onOpenChan
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  return { open, close, setLight, destroy };
+  return { open, close, setLight, setCap: (dir) => desk.setCap(dir), destroy };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));

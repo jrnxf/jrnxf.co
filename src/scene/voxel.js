@@ -73,7 +73,7 @@ export function segDist(p, a, b) {
   return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t);
 }
 
-export const HEAD_COLORS = { skin: "#d29d76", skinShade: "#bf8964", stubble: "#8a6446", hair: "#3a2a1f", hairHi: "#4a3627", cap: "#3d3936", capShade: "#34302d" };
+export const HEAD_COLORS = { skin: "#c98f68", skinShade: "#b67b58", stubble: "#84603f", hair: "#3a2a1f", hairHi: "#4a3627", cap: "#3d3936", capShade: "#34302d" };
 
 // The face, as numbers. The defaults are face 11, Strong Brow, which the captain chose in round 21; the face lab varies them.
 export const FACE = {
@@ -92,7 +92,7 @@ export const FACE = {
 };
 
 // head: a rounded skull, ears that stand out a little, short stubble along the jaw, blue eyes, hair and a cap
-export function headVoxels(Hd, C) {
+export function headVoxels(Hd, C, cap = "back") {
   const f = FACE;
   const cx = 24.5 + (Math.round(6.5 * Hd.k - 0.5) + 0.5) / Hd.k;
   const k = Hd.k, n = (v) => Math.round((v * k) / 2.5), n1 = (v) => Math.max(1, n(v));
@@ -154,23 +154,23 @@ export function headVoxels(Hd, C) {
     if (y < hem) return null;
     return Math.sin(ang * 7 + y * 1.3) > 0.45 ? C.hairHi : C.hair;
   }, C.hair, 0.04);
-  // a cap worn backwards: a dome that hugs the head, with the brim over the nape
+  // a cap: a dome that hugs the head, with the brim over the nape (worn backwards) or over the eyes
   Hd.fill(27, 25, 20, 35, 30, 27, (x, y, z) => {
     if (y < band) return null;
     const e = (Math.abs((x - cx) / (f.rx + 0.32)) ** hp + Math.abs((y - 25) / (f.ryTop + 0.22)) ** hp + Math.abs((z - 23.4) / 2.96) ** hp) ** (1 / hp); if (e > 1) return null;
     const ang = Math.atan2(z - 23.4, x - cx), seam = e > 0.9 && Math.abs(((ang / (Math.PI / 3)) % 1 + 1) % 1 - 0.5) > 0.47;
     return seam ? C.capShade : C.cap;
   }, C.cap, 0.02);
-  Hd.fill(28, 23, 25, 34, 28, 29, (x, y, z) => {
-    const dz = z - 25.85; if (dz < 0 || dz > 2.5) return null;
+  Hd.fill(28, 23, 18, 34, 28, 29, (x, y, z) => {
+    const dz = cap === "front" ? 20.95 - z : z - 25.85; if (dz < 0 || dz > 2.5) return null;
     const half = 2.0 * Math.sqrt(Math.max(0, 1 - (dz / 2.55) ** 2)); if (Math.abs(x - cx) > half) return null;
     const by = 26.0 + f.capLift - dz * 0.2 - 0.95 * ((x - cx) / 2.0) ** 2;
     return Math.abs(y - by) < 0.19 ? C.capShade : null;
   }, C.cap, 0.02);
 }
 
-export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, backdrop = null } = {}) {
-  const C = { wall: "#e9e1d3", floor: "#b98a5e", floor2: "#a97a50", desk: "#2a1a10", deskEdge: "#1c110a", legs: "#161618", metal: "#2b2b2e", alu: "#c9c9cc", ...HEAD_COLORS, shirt: "#f3f1ec", shirtRib: "#e2dfd8", sweater: "#ad7646", sweaterRib: "#99653a", pants: "#c9b38a", pantsCuff: "#d8c49e", cork: "#c49a68", strap: "#4a3326", sock: "#f4f2ec", shoe: "#1d1d20", chairFrame: "#26262a", mesh: "#55555b", mesh2: "#3e3e44", plant: "#4f8a4a", pot: "#d9cbb4", mug: "#f3ecdf", tire: "#1b1b1d", rim: "#c9c9cc", uni: "#fb9890", frame: "#f3ecdf" };
+export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, backdrop = null, cap = "back" } = {}) {
+  const C = { wall: "#e9e1d3", floor: "#b98a5e", floor2: "#a97a50", desk: "#2a1a10", legs: "#161618", metal: "#2b2b2e", alu: "#c9c9cc", ...HEAD_COLORS, shirt: "#fbfaf7", shirtRib: "#efede8", sweater: "#ad7646", sweaterRib: "#99653a", pants: "#c9b38a", pantsCuff: "#d8c49e", cork: "#c49a68", strap: "#4a3326", sock: "#f4f2ec", shoe: "#1d1d20", chairFrame: "#26262a", mesh: "#55555b", mesh2: "#3e3e44", plant: "#4f8a4a", pot: "#d9cbb4", mug: "#f3ecdf", tire: "#1b1b1d", rim: "#c9c9cc", uni: "#fb9890", frame: "#f3ecdf" };
   const root = new THREE.Group();
   const k = Math.max(1, Math.min(4, Math.round(res * 2) / 2));
   const V = makeVox(k, [1, -4, -1], [62, 36, 41]);
@@ -191,7 +191,6 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   BW.box(wx0 - 2, wy0 - 2, 1, wx1 + 2, wy0 - 2, 3, C.frame, 0.01); // sill
   // a standing desk: a dark walnut top in planks on two slim black legs, each centred on a slim foot that runs front to back
   for (let x = 14; x <= 48; x += 5) box(x, 13, 2, Math.min(48, x + 4), 13, 15, C.desk, 0.04);
-  box(14, 12, 15, 48, 12, 15, C.deskEdge, 0.02);
   const legZ = 8.5;
   for (const lx of [17, 45]) {
     fill(lx - 1, 2, 7, lx + 1, 11, 10, (x, y, z) => Math.abs(x - lx) < 0.7 && Math.abs(z - legZ) < 0.7, C.legs, 0.01);
@@ -254,10 +253,11 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   // torso in the sweater: rounded, a waist, a chest and sloped shoulders, leaning a little toward the desk
   P.fill(26, 11, 20, 36, 21, 27, (x, y, z) => {
     if (y < 11.6 || y > 20.7) return null;
-    const t = (y - 11.6) / 9.1, cz = 23.7 - t * 0.85;
+    const t = (y - 11.6) / 9.1, cz = 23.7 - t * 0.35;
     const wx = 2.75 + 0.55 * Math.sin(Math.min(1, t * 1.25) * Math.PI / 2) + 0.55 * Math.max(0, t - 0.7) / 0.3 - 1.5 * Math.max(0, t - 0.9) ** 2 / 0.01 * 0.1;
     const wz = 1.95 + 0.3 * Math.sin(t * Math.PI * 0.8);
-    const v = (Math.abs(x - 31) / (wx + 0.3)) ** 2.5 + (Math.abs(z - cz) / wz) ** 2.5;
+    // the chest is shallower in front than the back is behind, so the profile stays flat
+    const v = (Math.abs(x - 31) / (wx + 0.3)) ** 2.5 + (Math.abs(z - cz) / (z < cz ? wz * 0.8 : wz)) ** 2.5;
     if (v > 1 + 0.07 * Math.sin(y * 3.1 + x * 1.7) * (1 - t)) return null;
     const shoulder = Math.max(0, Math.abs(x - 31) - 1.4) * 0.42; if (y > 20.7 - shoulder) return null;
     return y < 12.3 ? C.shirtRib : C.shirt;
@@ -278,7 +278,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
       return null;
     }, C.pants, 0.025);
     // white sneakers: a rubber sole with a grey stripe, a rounded toe box, a heel collar and laces
-    const fx = 31 + sx * 1.75, heelZ = 18.75, toeZ = 15.6;
+    const fx = 31 + sx * 1.75, heelZ = 18.75, toeZ = 15.0;
     const footW = (z) => 0.58 + 0.16 * Math.sin(Math.min(1, Math.max(0, (heelZ - z) / (heelZ - toeZ))) * Math.PI * 0.85);
     P.fill(27, 0, 14, 35, 3, 20, (x, y, z) => {
       const dx = Math.abs(x - fx);
@@ -310,7 +310,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
     const g = new THREE.Group(); g.position.set(...el); const m = F.mesh(THREE, shadows); m.position.set(-el[0], -el[1], -el[2]); g.add(m);
     forearms.push({ g, sx, phase: Math.random() * 6 });
   }
-  headVoxels(Hd, C);
+  headVoxels(Hd, C, cap);
   person.add(P.mesh(THREE, shadows)); arms.add(A.mesh(THREE, shadows)); head.add(Hd.mesh(THREE, shadows));
   head.position.y = -0.3; head.position.z = -0.35;
   person.position.z = -NEAR;
@@ -441,7 +441,14 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   }
   // hides a wall while the camera is behind it
   function viewFrom(p) { backWall.visible = !backdrop && p.z > 1.5; }
-  return { root, hit, update, viewFrom, setLight, highlight };
+  // turns the cap round: the head is rebuilt with the brim on the other side
+  function setCap(dir) {
+    const old = head.children.find((o) => o.isInstancedMesh);
+    const H2 = makeVox(k, [25, 18, 18], [38, 31, 31]); headVoxels(H2, C, dir);
+    head.add(H2.mesh(THREE, shadows));
+    if (old) { head.remove(old); old.geometry.dispose(); old.material.dispose(); }
+  }
+  return { root, hit, update, viewFrom, setLight, setCap, highlight };
 }
 
 function canvasPlane(THREE, cw, ch, w, h) {
