@@ -59,7 +59,9 @@ export function startDesk({ stage, light = "golden", backdrop = null, onOpenChan
   // ---------- camera ----------
   const R0 = 108;
   let sph = { r: R0, th: 0.78, ph: 1.12 }, goal = { ...sph };
-  const look = new THREE.Vector3(28.5, 13, 15), lookGoal = look.clone();
+  // with no room around it, the camera frames the desk and the sitter alone, a little closer
+  const look = backdrop ? new THREE.Vector3(32.5, 13, 14) : new THREE.Vector3(28.5, 13, 15), lookGoal = look.clone();
+  const fit = backdrop ? 0.8 : 0.98;
   const cam = new THREE.PerspectiveCamera(32, 1, 1, 1800);
   const LIM = { ph: [0.9, 1.42] };
   function resize() {
@@ -68,7 +70,7 @@ export function startDesk({ stage, light = "golden", backdrop = null, onOpenChan
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
-    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * 0.98) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 19 : 13; }
+    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? (backdrop ? 15 : 19) : 13; }
     cam.updateProjectionMatrix();
   }
   const ro = new ResizeObserver(resize);

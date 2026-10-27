@@ -73,7 +73,7 @@ export function segDist(p, a, b) {
   return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t);
 }
 
-export const HEAD_COLORS = { skin: "#ecc19f", skinShade: "#e0ad8b", stubble: "#a07858", hair: "#3a2a1f", hairHi: "#4a3627", cap: "#3d3936", capShade: "#34302d" };
+export const HEAD_COLORS = { skin: "#d29d76", skinShade: "#bf8964", stubble: "#8a6446", hair: "#3a2a1f", hairHi: "#4a3627", cap: "#3d3936", capShade: "#34302d" };
 
 // The face, as numbers. The defaults are face 11, Strong Brow, which the captain chose in round 21; the face lab varies them.
 export const FACE = {
@@ -408,8 +408,8 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
     patch.visible = name === "golden" && !backdrop;
     // in a void the light comes from over the viewer's shoulder, bright and even, so the figure reads in full
     if (backdrop) {
-      hemi.color.set("#fff6ea"); hemi.groundColor.set(backdrop === "white" ? "#8a837a" : "#2a2624"); hemi.intensity = 0.32;
-      key.color.set("#ffe2c0"); key.intensity = 1.1; key.position.set(70, 60, 50); amb.intensity = 0.04;
+      hemi.color.set("#ffe9d2"); hemi.groundColor.set(backdrop === "white" ? "#a08c78" : "#2a2624"); hemi.intensity = 0.3;
+      key.color.set("#ffcf9e"); key.intensity = 0.58; key.position.set(70, 52, 58); amb.color.set("#ffe4c8"); amb.intensity = 0.05;
     }
   }
   setLight(light);
