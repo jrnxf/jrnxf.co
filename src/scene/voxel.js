@@ -377,7 +377,7 @@ export function buildDesk(THREE, { light = "golden", shadows = true, res = 2.5, 
   // click targets
   const hit = {};
   const target = (name, x0, y0, z0, x1, y1, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1), new THREE.MeshBasicMaterial({ visible: false })); m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); m.userData.name = name; root.add(m); hit[name] = m; };
-  target("mug", 40, 13, 10, 43, 17, 13); target("window", wx0, wy0, -1, wx1, wy1, 1);
+  target("mug", 40, 13, 10, 43, 17, 13); if (!backdrop) target("window", wx0, wy0, -1, wx1, wy1, 1);
   const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xfb9890, transparent: true, opacity: 0.9 }));
   outline.visible = false; root.add(outline);
 
