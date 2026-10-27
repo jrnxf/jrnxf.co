@@ -46,7 +46,7 @@ const CSS = `
 .desk-mark{width:min(300px,70%);color:var(--p-fg,#ededeb)}.desk-mark svg{width:100%;height:auto;display:block}
 @media (max-width:720px){.desk-panel{left:0;top:auto;bottom:0;transform:none;width:100%;max-height:82%;border-radius:18px 18px 0 0;box-shadow:0 -20px 40px -10px rgba(0,0,0,.6);animation:none}.desk-screen{height:170px}}
 `;
-const LABEL = { monitor: "the monitor · drip and okfs", mug: "the mug · about", poster: "the poster · about", window: "the sea · northern Portugal, now" };
+const LABEL = { monitor: "the monitor · drip and okfs", mug: "the mug · about", window: "the sea · northern Portugal, now" };
 const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 const lisbon = () => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
 const lisbonH = () => { const [h, m] = lisbon().split(":").map(Number); return h + m / 60; };
@@ -73,7 +73,7 @@ export function startDesk({ stage, light = "golden", onOpenChange }) {
   // ---------- camera ----------
   const R0 = 108;
   let sph = { r: R0, th: 0.78, ph: 1.12 }, goal = { ...sph }, flying = null;
-  const look = new THREE.Vector3(25, 13, 15), lookGoal = look.clone();
+  const look = new THREE.Vector3(28.5, 13, 15), lookGoal = look.clone();
   const cam = new THREE.PerspectiveCamera(32, 1, 1, 1800);
   const LIM = { ph: [0.9, 1.42] };
   function resize() {
@@ -172,7 +172,7 @@ export function startDesk({ stage, light = "golden", onOpenChange }) {
       pane = mountOkfs(panel.querySelector("#okPane"), { theme: "default", scheme: "dark" });
       pane.select("sunset-set.jpg");
       panel.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => pane.setTheme(b.dataset.t)));
-    } else if (name === "mug" || name === "poster") {
+    } else if (name === "mug") {
       panel.innerHTML = `${top}<div class="desk-mark">${markSVG()}</div><p class="desk-p big">Hi, I'm Colby. I build small, sharp tools for the terminal and the Mac, from a beach in northern Portugal.</p>
         <p class="desk-p">On the desk: one monitor that switches between <b>drip</b> and <b>okfs</b>. Click it.</p>
         <div class="desk-links"><a href="mailto:colby@jrnxf.co">colby@jrnxf.co</a><a href="https://github.com/jrnxf" target="_blank" rel="noopener">github</a><a href="https://instagram.com/jrn.xf" target="_blank" rel="noopener">instagram</a><a href="https://www.youtube.com/@jrnxf" target="_blank" rel="noopener">youtube</a><a href="https://twitter.com/jrn_xf" target="_blank" rel="noopener">twitter</a></div>`;

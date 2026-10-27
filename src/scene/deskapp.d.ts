@@ -1,7 +1,7 @@
 export type DeskLight = "golden" | "day" | "night";
 
 export interface DeskHandle {
-  open(name: "monitor" | "mug" | "poster" | "window"): void;
+  open(name: "monitor" | "mug" | "window"): void;
   close(): void;
   setLight(name: DeskLight): void;
   destroy(): void;
