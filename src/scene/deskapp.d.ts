@@ -2,10 +2,9 @@ export interface DeskHandle {
   open(name: "mug"): void;
   close(): void;
   destroy(): void;
-  /** jumps the camera to one of the start views (TEMPORARY, for comparing them live) */
-  setView(name: "A" | "B" | "C" | "D"): void;
-  /** freezes or resumes the auto motion (sway, typing, steam, clock flips) */
-  setPaused(paused: boolean): void;
+  /** TEMPORARY: steps the monitor wallpaper by one either way and returns its name */
+  cycleWallpaper(step: 1 | -1): string;
+  wallpaperName(): string;
 }
 
 export function startDesk(options: {

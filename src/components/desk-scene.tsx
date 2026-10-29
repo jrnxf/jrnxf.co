@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 
 const MARK = markSVG();
 
-// TEMPORARY: corner buttons that pause the auto motion and jump between the start views A-D, for
-// comparing them live. Set to false (or delete this const, the paused state and the buttons below)
-// before the PR.
-const SHOW_PAUSE_BUTTON = true;
+// TEMPORARY: a small "<  name  >" control at the bottom right that steps through the monitor's wallpaper
+// options, so a favourite can be picked live. Set to false (or delete this const, the state and the
+// control below) once one is chosen.
+const SHOW_WALLPAPER_PICKER = true;
 
 // the small cards the mug opens, in the same warm off-white as the void
 const PANEL_COLORS = {
@@ -26,7 +26,7 @@ export function DeskScene() {
   const deskRef = useRef<DeskHandle | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [phone, setPhone] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [wallpaper, setWallpaper] = useState("");
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -35,6 +35,7 @@ export function DeskScene() {
     void import("@/scene/deskapp.js").then(({ startDesk }) => {
       if (cancelled) return;
       deskRef.current = startDesk({ stage, backdrop: "white", onOpenChange: setPanelOpen });
+      setWallpaper(deskRef.current.wallpaperName());
     });
     return () => {
       cancelled = true;
@@ -86,41 +87,26 @@ export function DeskScene() {
       >
         {phone ? "swipe to look · pinch to zoom · tap the mug" : "drag to look · scroll to zoom · click the mug"}
       </div>
-      {SHOW_PAUSE_BUTTON && (
+      {SHOW_WALLPAPER_PICKER && (
         <div
           className={cn(
-            "absolute right-[max(14px,env(safe-area-inset-right))] top-[max(14px,env(safe-area-inset-top))] z-[4] flex gap-1.5",
+            "absolute bottom-[max(14px,env(safe-area-inset-bottom))] right-[max(14px,env(safe-area-inset-right))] z-[4] flex items-center gap-1.5 font-mono text-[11px] text-[rgba(42,38,34,0.55)]",
             chrome,
           )}
         >
-          {(["A", "B", "C", "D"] as const).map((name) => (
+          {([-1, 1] as const).map((step) => (
             <button
-              key={name}
+              key={step}
               type="button"
-              aria-label={`Start view ${name}`}
-              onClick={() => deskRef.current?.setView(name)}
-              className="cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-2.5 py-1 font-mono text-[11px] text-[rgba(42,38,34,0.5)] hover:text-[rgba(42,38,34,0.8)]"
+              aria-label={step < 0 ? "Previous wallpaper" : "Next wallpaper"}
+              onClick={() => setWallpaper(deskRef.current?.cycleWallpaper(step) ?? "")}
+              className="cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-2.5 py-1 hover:text-[rgba(42,38,34,0.85)]"
             >
-              {name}
+              {step < 0 ? "<" : ">"}
             </button>
           ))}
+          <span className="min-w-[8ch]">{wallpaper || "wallpaper"}</span>
         </div>
-      )}
-      {SHOW_PAUSE_BUTTON && (
-        <button
-          type="button"
-          aria-label={paused ? "Resume motion" : "Pause motion"}
-          onClick={() => {
-            deskRef.current?.setPaused(!paused);
-            setPaused(!paused);
-          }}
-          className={cn(
-            "absolute bottom-[max(14px,env(safe-area-inset-bottom))] right-[max(14px,env(safe-area-inset-right))] z-[4] cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-2.5 py-1 font-mono text-[11px] text-[rgba(42,38,34,0.5)] hover:text-[rgba(42,38,34,0.8)]",
-            chrome,
-          )}
-        >
-          {paused ? "play" : "pause"}
-        </button>
       )}
     </section>
   );

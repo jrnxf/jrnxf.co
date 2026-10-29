@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { buildDesk } from "./voxel.js";
 import { markSVG } from "./mark.js";
 import VOX_URL from "./jrnxf.vox?url";
+import { WALLPAPERS, selectWallpaper } from "./terminals.js";
 
 const CSS = `
 .desk-tip{position:absolute;z-index:5;pointer-events:none;font:500 12px "Geist Mono",ui-monospace,monospace;color:var(--tip-fg,#1d1a16);background:var(--tip-bg,rgba(243,236,223,.94));padding:6px 10px;border-radius:999px;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;white-space:nowrap}
@@ -57,15 +58,13 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
 
   // ---------- camera ----------
   const R0 = 100;
-  // the start views: over his shoulder at the screen (B, where it opens), a back three-quarter from the
-  // light side (A), low and large (C), and side on to the desk (D). r and look are null where the screen
-  // size decides. center puts the scene in the middle of the viewport; fit backs the camera off until
-  // the whole scene sits inside it with a margin.
+  // the two views of the opening move: side on to the desk (D, where it starts) and over his shoulder at
+  // the screen (B, where it rests). r and look are null where the screen size decides. center puts the
+  // scene in the middle of the viewport; fit backs the camera off until the whole scene sits inside it
+  // with a margin.
   const DESK_LOOK = [32.5, 13, 14];
   const PRESETS = {
-    A: { th: 2.28, ph: 1.17, r: null, look: null, center: true },
     B: { th: 0.3, ph: 1.1, r: null, look: null, center: true, fit: true },
-    C: { th: 2.28, ph: 1.5, r: 78, look: DESK_LOOK, center: true },
     D: { th: Math.PI / 2, ph: 1.45, r: 85, look: DESK_LOOK, center: true },
   };
   let preset = PRESETS.B;
@@ -268,18 +267,18 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
 
   // ---------- loop ----------
   // the room only renders while it is on screen, so scrolling past it costs nothing
-  let raf = 0, visible = true, paused = false, sim = 0, lastNow = 0, swayOff = 0, swayClock = 0, swaying = false;
+  let raf = 0, visible = true, sim = 0, lastNow = 0, swayOff = 0, swayClock = 0, swaying = false;
   const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(frame); });
   function frame(now) {
     raf = 0;
     if (!visible) return;
     // motion runs on its own clock so a pause freezes the sway, typing, steam and clock together
-    const dt = !paused && lastNow ? now - lastNow : 0;
+    const dt = lastNow ? now - lastNow : 0;
     sim += dt;
     lastNow = now;
     // the sway swings evenly around wherever the view rests: each time it starts, it starts from zero
     if (intro) stepIntro(now);
-    if (!intro && !paused && !reduced && !drag && !openName && now - lastMove > 2500) {
+    if (!intro && !reduced && !drag && !openName && now - lastMove > 2500) {
       if (!swaying) { swaying = true; swayClock = 0; swayOff = 0; }
       swayClock += dt;
       const off = Math.sin(swayClock / 6000) * 0.4;
@@ -307,6 +306,9 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  return { open, close, destroy, setView, setPaused: (p) => { paused = p; } };
+  // TEMPORARY, with the wallpaper picker in the page: steps through the monitor's wallpapers and returns the new name
+  let wallpaper = 0;
+  const cycleWallpaper = (step) => { wallpaper = (wallpaper + step + WALLPAPERS.length) % WALLPAPERS.length; selectWallpaper(wallpaper); return WALLPAPERS[wallpaper].name; };
+  return { open, close, destroy, cycleWallpaper, wallpaperName: () => WALLPAPERS[wallpaper].name };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));

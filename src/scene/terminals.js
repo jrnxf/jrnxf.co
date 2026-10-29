@@ -1,3 +1,5 @@
+import { MARK } from "./mark.js";
+
 // The monitor's screen: a few terminal windows at work. Every so often one closes and another opens
 // somewhere else, running something else. Nothing on it is a real product; it is just a busy desk.
 
@@ -12,7 +14,24 @@ function rnd(a, b, c = 0) {
 }
 function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
 
-const C = { fg: "#d8d6d0", dim: "#7d7b76", green: "#8fd18a", yellow: "#e6c27a", red: "#ef8a80", blue: "#8ab4f0", pink: "#fb9890" };
+// Colours of Cursor's default dark theme ("Cursor Dark"), taken from a copy of its theme file:
+// https://github.com/BioHazard786/cursor-theme-vscode/blob/main/themes/cursor-dark.json (MIT).
+// Editor and terminal backgrounds, the terminal's ANSI palette, selection and cursor, the tab and title
+// bar chrome, and the syntax colours its editor uses (keyword, string, function, number, variable).
+const CURSOR = {
+  editorBg: "#181818", terminalBg: "#141414", chromeBg: "#141414", border: "#e4e4e413",
+  fg: "#e4e4e4eb", faint: "#e4e4e442", comment: "#e4e4e45e", titleFg: "#e4e4e484",
+  selection: "#40404099", lineHighlight: "#262626", cursor: "#e4e4e4eb",
+  ansi: { black: "#242424", red: "#fc6b83", green: "#3fa266", yellow: "#d2943e", blue: "#81a1c1", magenta: "#b48ead", cyan: "#88c0d0", white: "#e4e4e4" },
+  bright: { red: "#fc6b83", green: "#70b489", yellow: "#f1b467", blue: "#87a6c4", magenta: "#b48ead", cyan: "#88c0d0" },
+  syntax: { keyword: "#82d2ce", string: "#e394dc", func: "#efb080", number: "#ebc88d", variable: "#d6d6dd", constant: "#aaa0fa" },
+};
+
+// the run colours the windows use, all from the theme above
+const C = {
+  fg: CURSOR.fg, dim: CURSOR.comment, green: CURSOR.bright.green, yellow: CURSOR.ansi.yellow, red: CURSOR.ansi.red,
+  blue: CURSOR.ansi.blue, pink: CURSOR.ansi.magenta, cyan: CURSOR.ansi.cyan, number: CURSOR.syntax.number,
+};
 
 // what a terminal can be doing; each returns its lines ([text, colour] runs) at time t into its life
 const KINDS = {
@@ -63,7 +82,7 @@ const KINDS = {
     let left = shown;
     for (let i = 0; i < Math.min(code.length, n - 1); i++) {
       const line = code[i], vis = line.slice(0, Math.max(0, left)); left -= line.length + 1;
-      out.push([[String(i + 1).padStart(3) + " ", C.dim], [vis, /function|return|const|await|for|async/.test(vis) ? C.blue : C.fg]]);
+      out.push([[String(i + 1).padStart(3) + " ", CURSOR.faint], [vis, /function|return|const|await|for|async/.test(vis) ? CURSOR.syntax.keyword : /\(|\)/.test(vis) ? CURSOR.syntax.variable : C.fg]]);
       if (left < 0) break;
     }
     out.push([["-- INSERT --", C.green]]);
@@ -103,34 +122,73 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
-// the picture behind the windows, drawn cover-fit with no smoothing so a dither stays crisp
-let wallpaper = null;
-export function setWallpaper(img) { wallpaper = img; }
+// ---- wallpapers: TEMPORARY set of options to choose from, each drawn once on a canvas and kept ----
+const bands = (x, list) => list.forEach(([y0, y1, c]) => { x.fillStyle = c; x.fillRect(0, y0, W, y1 - y0); });
+const lin = (x, stops, x1 = 0, y1 = H) => { const g = x.createLinearGradient(0, 0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; };
+const glow = (x, cx, cy, r, c) => { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, c); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, W, H); };
+
+export const WALLPAPERS = [
+  { name: "charcoal", draw(x) { x.fillStyle = "#1c1c1e"; x.fillRect(0, 0, W, H); } },
+  { name: "vertical fade", draw(x) { x.fillStyle = lin(x, [[0, "#26282c"], [1, "#101113"]], 0, H); x.fillRect(0, 0, W, H); } },
+  { name: "aurora", draw(x) {
+    x.fillStyle = "#101216"; x.fillRect(0, 0, W, H);
+    glow(x, 170, 120, 260, "rgba(72,170,150,.38)"); glow(x, 470, 90, 240, "rgba(120,96,200,.32)"); glow(x, 330, 300, 280, "rgba(60,120,190,.22)");
+  } },
+  { name: "grid", draw(x) {
+    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(228,228,228,.07)"; x.lineWidth = 1; x.beginPath();
+    for (let i = 0; i <= W; i += 32) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
+    for (let j = 0; j <= H; j += 32) { x.moveTo(0, j + .5); x.lineTo(W, j + .5); }
+    x.stroke();
+  } },
+  { name: "sunset", draw(x) { x.fillStyle = lin(x, [[0, "#1b1722"], [.45, "#4a2a3a"], [.75, "#a8553c"], [1, "#d8884a"]], 0, H); x.fillRect(0, 0, W, H); } },
+  { name: "coast", draw(x) {
+    // flat bands: dusk sky over a calm sea, a low sun and its stripes on the water
+    bands(x, [[0, 150, "#27304a"], [150, 190, "#3b4466"], [190, 215, "#7a5a72"], [215, 232, "#c98a6a"], [232, 262, "#2d4a5e"], [262, 300, "#243e51"], [300, 335, "#1d3343"], [335, H, "#162a37"]]);
+    x.fillStyle = "#e9b27a"; x.beginPath(); x.arc(430, 232, 26, Math.PI, 0); x.fill();
+    x.fillStyle = "rgba(233,178,122,.55)"; [[243, 56], [252, 40], [262, 26]].forEach(([y, w]) => x.fillRect(430 - w, y, w * 2, 4));
+  } },
+  { name: "mark", draw(x) {
+    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H);
+    const [vx, vy, vw, vh] = MARK.regular.vb.split(" ").map(Number), s = 150 / vw;
+    x.save(); x.translate(W / 2 - (vw * s) / 2 - vx * s, H / 2 - (vh * s) / 2 - vy * s); x.scale(s, s); x.fillStyle = "rgba(228,228,228,.16)"; x.fill(new Path2D(MARK.regular.d), "evenodd"); x.restore();
+  } },
+  { name: "topo", draw(x) {
+    x.fillStyle = "#16181a"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(136,192,208,.14)"; x.lineWidth = 1;
+    for (const [cx, cy, n, gap] of [[200, 170, 11, 17], [500, 250, 9, 15]]) for (let k = 1; k <= n; k++) {
+      x.beginPath();
+      for (let a = 0; a <= 64; a++) { const t = (a / 64) * Math.PI * 2, r = k * gap * (1 + .16 * Math.sin(3 * t + k * .35) + .09 * Math.sin(5 * t - k * .2)); x[a ? "lineTo" : "moveTo"](cx + r * 1.35 * Math.cos(t), cy + r * Math.sin(t)); }
+      x.closePath(); x.stroke();
+    }
+  } },
+];
+const drawn = [];
+let wallpaperAt = 0;
+export function selectWallpaper(i) { wallpaperAt = i; }
+function wallpaperFor(i) {
+  if (!drawn[i]) { const c = document.createElement("canvas"); c.width = W; c.height = H; WALLPAPERS[i].draw(c.getContext("2d")); drawn[i] = c; }
+  return drawn[i];
+}
 
 export function paintTerminals(x, t) {
-  if (wallpaper) {
-    const s = Math.max(W / wallpaper.width, H / wallpaper.height), w = wallpaper.width * s, h = wallpaper.height * s;
-    x.imageSmoothingEnabled = false; x.drawImage(wallpaper, (W - w) / 2, (H - h) / 2, w, h);
-  } else {
-    const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1f1d27"); g.addColorStop(1, "#34293a");
-    x.fillStyle = g; x.fillRect(0, 0, W, H);
-  }
-  x.fillStyle = "rgba(0,0,0,.3)"; x.fillRect(0, 0, W, 18);
+  x.drawImage(wallpaperFor(wallpaperAt), 0, 0);
+  x.fillStyle = "rgba(20,20,20,.82)"; x.fillRect(0, 0, W, 18);
   const wins = windowsAt(t);
   wins.forEach((win, i) => {
     const top = i === wins.length - 1, e = 1 - (1 - win.scale) ** 3, s = 0.9 + 0.1 * e;
     const w = win.w * s, h = win.h * s, wx = win.x0 + (win.w - w) / 2, wy = win.y0 + (win.h - h) / 2;
     x.save(); x.globalAlpha = e;
     x.fillStyle = "rgba(0,0,0,.35)"; rr(x, wx + 3, wy + 6, w, h, 8); x.fill();
-    x.fillStyle = top ? "#121214" : "#18181b"; rr(x, wx, wy, w, h, 8); x.fill();
-    x.fillStyle = top ? "#26262b" : "#202024"; x.beginPath(); x.moveTo(wx + 8, wy); x.arcTo(wx + w, wy, wx + w, wy + 20, 8); x.lineTo(wx + w, wy + 20); x.lineTo(wx, wy + 20); x.arcTo(wx, wy, wx + w, wy, 8); x.closePath(); x.fill();
-    ["#ff5f57", "#febc2e", "#28c840"].forEach((c, k) => { x.fillStyle = top ? c : "#4a4a50"; x.beginPath(); x.arc(wx + 12 + k * 13, wy + 10, 3.6, 0, 7); x.fill(); });
-    x.fillStyle = "#8a8884"; x.font = `10px ${MONO}`; x.textAlign = "center"; x.fillText("zsh", wx + w / 2, wy + 14); x.textAlign = "left";
+    x.fillStyle = top ? CURSOR.terminalBg : CURSOR.editorBg; rr(x, wx, wy, w, h, 8); x.fill();
+    x.strokeStyle = CURSOR.border; x.lineWidth = 1; rr(x, wx + .5, wy + .5, w - 1, h - 1, 8); x.stroke();
+    x.fillStyle = CURSOR.chromeBg; x.beginPath(); x.moveTo(wx + 8, wy); x.arcTo(wx + w, wy, wx + w, wy + 20, 8); x.lineTo(wx + w, wy + 20); x.lineTo(wx, wy + 20); x.arcTo(wx, wy, wx + w, wy, 8); x.closePath(); x.fill();
+    x.fillStyle = CURSOR.border; x.fillRect(wx, wy + 20, w, 1);
+    ["#ff5f57", "#febc2e", "#28c840"].forEach((c, k) => { x.fillStyle = top ? c : CURSOR.faint; x.beginPath(); x.arc(wx + 12 + k * 13, wy + 10, 3.6, 0, 7); x.fill(); });
+    x.fillStyle = CURSOR.titleFg; x.font = `10px ${MONO}`; x.textAlign = "center"; x.fillText("zsh", wx + w / 2, wy + 14); x.textAlign = "left";
     x.beginPath(); x.rect(wx + 6, wy + 22, w - 12, h - 26); x.clip();
     x.font = `10.5px ${MONO}`;
     const rows = Math.floor((h - 30) / 14), lines = KINDS[win.kind](win.local, rows);
     lines.forEach((runs, r) => { let px = wx + 10; for (const [text, col] of runs) { x.fillStyle = col; x.fillText(text, px, wy + 36 + r * 14); px += x.measureText(text).width; } });
-    if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = C.fg; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
+    if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = CURSOR.cursor; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
     x.restore();
   });
 }
