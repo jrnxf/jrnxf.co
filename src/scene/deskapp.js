@@ -34,13 +34,14 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const phone = () => innerWidth < 720;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, phone() ? 1.5 : 2));
+  const pixelRatio = () => Math.min(devicePixelRatio || 1, phone() ? 1.5 : 2);
+  renderer.setPixelRatio(pixelRatio());
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   stage.append(renderer.domElement);
-  // a vertical swipe still scrolls the page on touch; a sideways drag turns the room
-  renderer.domElement.style.touchAction = "pan-y";
+  // the canvas owns touch gestures: one finger turns the room, two fingers zoom it
+  renderer.domElement.style.touchAction = "none";
   const scene = new THREE.Scene();
   // the voxels load from the .vox file; until they arrive the stage stays empty
   let desk = null, targets = [], dead = false;
@@ -59,37 +60,86 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const fit = 0.8;
   const cam = new THREE.PerspectiveCamera(32, 1, 1, 1800);
   const LIM = { ph: [0.9, 1.42] };
+  // real zoom: the camera renders a smaller window of the view (setViewOffset), so every zoom level
+  // is drawn at full resolution instead of the browser stretching a bitmap. v is the current window
+  // (zoom factor + top-left corner as a fraction of the full view), g is where it is easing to
+  const ZOOM = [1, 5];
+  const v = { z: 1, x: 0, y: 0 }, g = { z: 1, x: 0, y: 0 };
+  function zoomAt(factor, u, w) {
+    const z = clamp(g.z * factor, ZOOM);
+    // keep the point under the cursor (u, w as 0..1 across the stage) fixed while the window shrinks
+    const cx = g.x + u / g.z, cy = g.y + w / g.z;
+    g.z = z; g.x = clamp(cx - u / z, [0, 1 - 1 / z]); g.y = clamp(cy - w / z, [0, 1 - 1 / z]);
+  }
+  function applyView() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    if (v.z < 1.001) cam.clearViewOffset();
+    else cam.setViewOffset(w, h, v.x * w, v.y * h, w / v.z, h / v.z);
+  }
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     if (!w || !h) return;
+    // re-read the pixel ratio so browser zoom (which changes it) redraws sharp
+    renderer.setPixelRatio(pixelRatio());
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
     if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 15 : 13; }
     cam.updateProjectionMatrix();
+    applyView();
   }
   const ro = new ResizeObserver(resize);
+  addEventListener("resize", resize);
   const place = () => { const { r, th, ph } = sph; cam.position.set(look.x + r * Math.sin(ph) * Math.sin(th), look.y + r * Math.cos(ph), look.z + r * Math.sin(ph) * Math.cos(th)); cam.lookAt(look); };
 
   // ---------- input ----------
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const tip = document.createElement("div"); tip.className = "desk-tip"; stage.append(tip);
-  let drag = null, lastMove = performance.now();
+  const touches = new Map();
+  let pinch = null, drag = null, lastMove = performance.now();
   const pick = (e) => { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, cam); const h = ray.intersectObjects(targets)[0]; return h ? h.object.userData.name : null; };
   const el = renderer.domElement;
-  el.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, moved: 0, th: goal.th, ph: goal.ph, touch: e.pointerType !== "mouse" }; if (!drag.touch) el.setPointerCapture(e.pointerId); });
+  const stageUV = (cx, cy) => { const r = el.getBoundingClientRect(); return [(cx - r.left) / r.width, (cy - r.top) / r.height]; };
+  el.addEventListener("wheel", (e) => {
+    if (openName) return;
+    e.preventDefault();
+    // pinch on a trackpad arrives as ctrl+wheel with small deltas; a plain wheel needs a gentler step
+    const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    const [u, w] = stageUV(e.clientX, e.clientY);
+    zoomAt(Math.exp(-px * (e.ctrlKey ? 0.01 : 0.0015)), u, w);
+  }, { passive: false });
+  const pinchSpan = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+  el.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); el.setPointerCapture(e.pointerId);
+      if (touches.size === 2 && !openName) { drag = null; pinched = true; pinch = pinchSpan(); return; }
+    }
+    drag = { x: e.clientX, y: e.clientY, moved: 0, th: goal.th, ph: goal.ph, touch: e.pointerType !== "mouse" }; if (!drag.touch) el.setPointerCapture(e.pointerId);
+  });
   el.addEventListener("pointermove", (e) => {
     lastMove = performance.now();
+    if (touches.has(e.pointerId)) {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && touches.size >= 2) {
+        const now = pinchSpan(), [u, w] = stageUV(now.x, now.y);
+        zoomAt(now.d / pinch.d, u, w);
+        pinch = now;
+      }
+      if (pinched) return;
+    }
     if (drag && !openName) {
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved = Math.hypot(dx, dy);
       goal.th = drag.th - dx * 0.005;
-      // on touch the vertical swipe belongs to the page, so only a mouse tilts the camera
-      if (!drag.touch) goal.ph = clamp(drag.ph - dy * 0.004, LIM.ph);
+      goal.ph = clamp(drag.ph - dy * 0.004, LIM.ph);
     }
     if (e.pointerType === "mouse") setHover(pick(e), e);
   });
-  el.addEventListener("pointerup", (e) => { const d = drag; drag = null; if (d && d.moved < 6) { const n = pick(e); if (n) open(n); } });
-  el.addEventListener("pointercancel", () => (drag = null));
+  // a pinch must not end in a tap that opens the mug, so it holds the drag shut until every finger is up
+  let pinched = false;
+  const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (!touches.size) pinched = false; };
+  el.addEventListener("pointerup", (e) => { const was = pinched; endTouch(e); const d = was ? null : drag; drag = null; if (d && d.moved < 6) { const n = pick(e); if (n) open(n); } });
+  el.addEventListener("pointercancel", (e) => { endTouch(e); drag = null; });
   el.addEventListener("pointerleave", () => setHover(null));
   function setHover(n, e) {
     desk?.highlight(n && !openName ? n : null);
@@ -127,6 +177,8 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     const ease = (v, g, eps) => (Math.abs(g - v) < eps ? g : v + (g - v) * k);
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
     look.lerp(lookGoal, k);
+    const zk = reduced ? 1 : 0.18, moved = Math.abs(g.z - v.z) > 1e-4 || Math.abs(g.x - v.x) > 1e-4 || Math.abs(g.y - v.y) > 1e-4;
+    if (moved) { v.z += (g.z - v.z) * zk; v.x += (g.x - v.x) * zk; v.y += (g.y - v.y) * zk; if (Math.abs(g.z - v.z) <= 1e-4) Object.assign(v, g); applyView(); }
     place();
     desk?.update(now, reduced);
     renderer.render(scene, cam);
@@ -138,7 +190,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   function destroy() {
     cancelAnimationFrame(raf); raf = 0; visible = false; dead = true;
     ro.disconnect(); io.disconnect();
-    removeEventListener("keydown", onKey);
+    removeEventListener("keydown", onKey); removeEventListener("resize", resize);
     desk?.root.traverse((o) => { o.geometry?.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose(); m.dispose(); }); });
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
