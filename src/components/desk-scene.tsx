@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 
 const MARK = markSVG();
 
-// TEMPORARY: a corner button that pauses the auto motion, for looking at the scene still. Set to
-// false (or delete this const, the paused state and the button below) before the PR.
+// TEMPORARY: corner buttons that pause the auto motion and jump between the start views A-D, for
+// comparing them live. Set to false (or delete this const, the paused state and the buttons below)
+// before the PR.
 const SHOW_PAUSE_BUTTON = true;
 
 // the small cards the mug opens, in the same warm off-white as the void
@@ -85,6 +86,26 @@ export function DeskScene() {
       >
         {phone ? "swipe to look · pinch to zoom · tap the mug" : "drag to look · scroll to zoom · click the mug"}
       </div>
+      {SHOW_PAUSE_BUTTON && (
+        <div
+          className={cn(
+            "absolute right-[max(14px,env(safe-area-inset-right))] top-[max(14px,env(safe-area-inset-top))] z-[4] flex gap-1.5",
+            chrome,
+          )}
+        >
+          {(["A", "B", "C", "D"] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-label={`Start view ${name}`}
+              onClick={() => deskRef.current?.setView(name)}
+              className="cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-2.5 py-1 font-mono text-[11px] text-[rgba(42,38,34,0.5)] hover:text-[rgba(42,38,34,0.8)]"
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
       {SHOW_PAUSE_BUTTON && (
         <button
           type="button"

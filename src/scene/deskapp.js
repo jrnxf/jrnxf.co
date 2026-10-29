@@ -50,29 +50,78 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     desk = buildDesk(THREE, buf, { shadows: true, backdrop });
     targets = Object.values(desk.hit);
     scene.add(desk.root);
+    reframe(true);
   }).catch((e) => console.error(e));
 
   // ---------- camera ----------
   const R0 = 100;
-  let sph = { r: R0, th: 2.28, ph: 1.34 }, goal = { ...sph };
+  // the start views: a back three-quarter from the light side (A), over his shoulder at the screen (B),
+  // low and large (C), and side on to the desk (D). r and look are null where the screen size decides.
+  // center puts the scene's box in the middle of the viewport; B is a close-up, so it stays as framed.
+  const DESK_LOOK = [32.5, 13, 14];
+  const PRESETS = {
+    A: { th: 2.28, ph: 1.17, r: null, look: null, center: true },
+    B: { th: 0.3, ph: 1.1, r: 42, look: [31, 20, 8], center: false },
+    C: { th: 2.28, ph: 1.5, r: 78, look: DESK_LOOK, center: true },
+    D: { th: Math.PI / 2, ph: 1.45, r: 85, look: DESK_LOOK, center: true },
+  };
+  let preset = PRESETS.A;
+  let sph = { r: R0, th: preset.th, ph: preset.ph }, goal = { ...sph };
   // the camera frames the desk and the sitter alone
-  const look = new THREE.Vector3(32.5, 13, 14), lookGoal = look.clone();
+  const look = new THREE.Vector3(...DESK_LOOK), lookGoal = look.clone();
   const fit = 0.8;
   const cam = new THREE.PerspectiveCamera(32, 1, 1, 1800);
-  const LIM = { ph: [0.9, 1.42] };
+  const LIM = { ph: [0.7, 1.55] };
+  const aspect = () => stage.clientWidth / stage.clientHeight;
+  // a tall screen backs the camera off so the whole desk fits, and looks a little higher
+  const autoR = () => (aspect() < 1 ? Math.min(250, (R0 * fit) / aspect()) : R0);
+  const autoY = () => (aspect() < 1 ? 15 : 13);
   // real zoom: the camera renders a smaller window of the view (setViewOffset), so every zoom level
   // is drawn at full resolution instead of the browser stretching a bitmap. v is the current window
   // (zoom factor + top-left corner as a fraction of the full view), g is where it is easing to
   const ZOOM = [1, 5];
-  // on a wide screen the scene opens left of centre, which is the view window sitting right of centre
-  const homeX = () => (stage.clientWidth / stage.clientHeight > 1.2 ? 0.21 : 0);
+  // home is where the window rests at zoom 1: it is chosen so the scene's box sits in the middle of the viewport
+  const home = { x: 0, y: 0 };
   const v = { z: 1, x: 0, y: 0 }, g = { z: 1, x: 0, y: 0 };
+  const corner = new THREE.Vector3();
+  function computeHome() {
+    home.x = home.y = 0;
+    if (!desk?.framing || !preset.center) return;
+    // project the box from the pose the camera is heading for, with no window, and measure where the voxels land
+    cam.clearViewOffset();
+    const { r, th, ph } = goal;
+    cam.position.set(lookGoal.x + r * Math.sin(ph) * Math.sin(th), lookGoal.y + r * Math.cos(ph), lookGoal.z + r * Math.sin(ph) * Math.cos(th));
+    cam.lookAt(lookGoal); cam.updateMatrixWorld();
+    const ndc = [[Infinity, -Infinity], [Infinity, -Infinity]];
+    for (const p of desk.framing) {
+      corner.copy(p).project(cam);
+      ndc[0][0] = Math.min(ndc[0][0], corner.x); ndc[0][1] = Math.max(ndc[0][1], corner.x);
+      ndc[1][0] = Math.min(ndc[1][0], corner.y); ndc[1][1] = Math.max(ndc[1][1], corner.y);
+    }
+    // the window moves by the box centre's offset from the middle: right to bring it left, down to bring it up
+    home.x = (ndc[0][0] + ndc[0][1]) / 4; home.y = -(ndc[1][0] + ndc[1][1]) / 4;
+  }
+  // snap puts the window straight on its new home; otherwise it eases there
+  function reframe(snap) {
+    computeHome();
+    if (g.z === 1) { g.x = home.x; g.y = home.y; if (snap) { v.x = g.x; v.y = g.y; } }
+    // computing the home cleared the window, so put it back
+    applyView();
+  }
+  function setView(name) {
+    const p = PRESETS[name];
+    if (!p || openName) return;
+    preset = p;
+    goal.th = p.th; goal.ph = p.ph; goal.r = p.r ?? autoR();
+    lookGoal.set(...(p.look ?? [DESK_LOOK[0], autoY(), DESK_LOOK[2]]));
+    g.z = 1; reframe(false);
+  }
   function zoomAt(factor, u, w) {
     const z = clamp(g.z * factor, ZOOM);
     // keep the point under the cursor (u, w as 0..1 across the stage) fixed while the window shrinks
     const cx = g.x + u / g.z, cy = g.y + w / g.z;
-    const hx = homeX() / z;
-    g.z = z; g.x = clamp(cx - u / z, [hx, 1 - 1 / z + hx]); g.y = clamp(cy - w / z, [0, 1 - 1 / z]);
+    const [hx, hy] = [home.x / z, home.y / z];
+    g.z = z; g.x = clamp(cx - u / z, [hx, 1 - 1 / z + hx]); g.y = clamp(cy - w / z, [hy, 1 - 1 / z + hy]);
   }
   function applyView() {
     const w = stage.clientWidth, h = stage.clientHeight;
@@ -88,9 +137,10 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
-    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 15 : 10.2; }
+    if (!openName && preset.r == null) { goal.r = sph.r = autoR(); lookGoal.y = look.y = autoY(); }
     cam.updateProjectionMatrix();
-    if (g.z === 1) g.x = v.x = homeX();
+    computeHome();
+    if (g.z === 1) { g.x = v.x = home.x; g.y = v.y = home.y; }
     applyView();
   }
   const ro = new ResizeObserver(resize);
@@ -179,7 +229,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     // motion runs on its own clock so a pause freezes the sway, typing, steam and clock together
     if (!paused) sim += lastNow ? now - lastNow : 0;
     lastNow = now;
-    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(sim / 6000) * 0.0009;
+    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(sim / 6000) * 0.0021;
     const k = reduced ? 1 : 0.08;
     const ease = (v, g, eps) => (Math.abs(g - v) < eps ? g : v + (g - v) * k);
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
@@ -202,6 +252,6 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  return { open, close, destroy, setPaused: (p) => { paused = p; } };
+  return { open, close, destroy, setView, setPaused: (p) => { paused = p; } };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));
