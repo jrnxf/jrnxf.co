@@ -140,7 +140,13 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   if (shadows) { key.castShadow = true; key.shadow.mapSize.set(2048, 2048); const s = key.shadow.camera; s.left = -40; s.right = 40; s.top = 40; s.bottom = -40; s.near = 1; s.far = 160; key.shadow.bias = -0.0015; key.shadow.normalBias = 0.06; }
 
   // the flip clock's face: real Lisbon time, each card flips when its digits change
-  const clock = canvasPlane(THREE, 256, 120, 4.6, 2.05); clock.mesh.position.set(43, 16.55, 8.02); root.add(clock.mesh);
+  // the plane is sized and placed from the clock's own voxels: the front-most layer of the case, in
+  // the box the clock sits in, with a hair of offset so it does not z-fight with that face
+  const face = voxels.map(toScene).filter(([x, y, z]) => x > 40 && x < 46 && y > 15.5 && y < 18 && z > 5 && z < 9);
+  const faceZ = Math.max(...face.map((c) => c[2])), front = face.filter((c) => c[2] > faceZ - S / 2);
+  const [fx0, fx1] = [Math.min(...front.map((c) => c[0])) - S / 2, Math.max(...front.map((c) => c[0])) + S / 2];
+  const [fy0, fy1] = [Math.min(...front.map((c) => c[1])) - S / 2, Math.max(...front.map((c) => c[1])) + S / 2];
+  const clock = canvasPlane(THREE, 256, 120, fx1 - fx0, fy1 - fy0); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2 + 0.01); root.add(clock.mesh);
   let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
     const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
