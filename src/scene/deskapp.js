@@ -167,12 +167,15 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
 
   // ---------- loop ----------
   // the room only renders while it is on screen, so scrolling past it costs nothing
-  let raf = 0, visible = true;
+  let raf = 0, visible = true, paused = false, sim = 0, lastNow = 0;
   const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(frame); });
   function frame(now) {
     raf = 0;
     if (!visible) return;
-    if (!reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(now / 6000) * 0.0009;
+    // motion runs on its own clock so a pause freezes the sway, typing, steam and clock together
+    if (!paused) sim += lastNow ? now - lastNow : 0;
+    lastNow = now;
+    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(sim / 6000) * 0.0009;
     const k = reduced ? 1 : 0.08;
     const ease = (v, g, eps) => (Math.abs(g - v) < eps ? g : v + (g - v) * k);
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
@@ -180,7 +183,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     const zk = reduced ? 1 : 0.18, moved = Math.abs(g.z - v.z) > 1e-4 || Math.abs(g.x - v.x) > 1e-4 || Math.abs(g.y - v.y) > 1e-4;
     if (moved) { v.z += (g.z - v.z) * zk; v.x += (g.x - v.x) * zk; v.y += (g.y - v.y) * zk; if (Math.abs(g.z - v.z) <= 1e-4) Object.assign(v, g); applyView(); }
     place();
-    desk?.update(now, reduced);
+    desk?.update(sim, reduced);
     renderer.render(scene, cam);
     raf = requestAnimationFrame(frame);
   }
@@ -195,6 +198,6 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  return { open, close, destroy };
+  return { open, close, destroy, setPaused: (p) => { paused = p; } };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));

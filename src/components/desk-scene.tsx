@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 
 const MARK = markSVG();
 
+// TEMPORARY: a corner button that pauses the auto motion, for looking at the scene still. Set to
+// false (or delete this const, the paused state and the button below) before the PR.
+const SHOW_PAUSE_BUTTON = true;
+
 // the small cards the mug opens, in the same warm off-white as the void
 const PANEL_COLORS = {
   "--p-bg": "#f6f2ec",
@@ -21,6 +25,7 @@ export function DeskScene() {
   const deskRef = useRef<DeskHandle | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [phone, setPhone] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -80,6 +85,22 @@ export function DeskScene() {
       >
         {phone ? "swipe to look · pinch to zoom · tap the mug" : "drag to look · scroll to zoom · click the mug"}
       </div>
+      {SHOW_PAUSE_BUTTON && (
+        <button
+          type="button"
+          aria-label={paused ? "Resume motion" : "Pause motion"}
+          onClick={() => {
+            deskRef.current?.setPaused(!paused);
+            setPaused(!paused);
+          }}
+          className={cn(
+            "absolute bottom-[max(14px,env(safe-area-inset-bottom))] right-[max(14px,env(safe-area-inset-right))] z-[4] cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-2.5 py-1 font-mono text-[11px] text-[rgba(42,38,34,0.5)] hover:text-[rgba(42,38,34,0.8)]",
+            chrome,
+          )}
+        >
+          {paused ? "play" : "pause"}
+        </button>
+      )}
     </section>
   );
 }
