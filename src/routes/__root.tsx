@@ -6,7 +6,6 @@ import geistMono400 from "@fontsource/geist-mono/latin-400.css?url";
 import geistMono700 from "@fontsource/geist-mono/latin-700.css?url";
 import geistMono400Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistMono700Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-700-normal.woff2?url";
-import { SHADER_BOOT_SCRIPT } from "@/components/particle-field";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -85,20 +84,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        <canvas
-          id="dither-bg"
-          suppressHydrationWarning
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-          }}
-          aria-hidden="true"
-        />
-        <script dangerouslySetInnerHTML={{ __html: SHADER_BOOT_SCRIPT }} />
         {children}
         <Scripts />
       </body>
