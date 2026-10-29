@@ -4,7 +4,7 @@
 // clock, the steam and the light. Written against three r128.
 
 import { MARK } from "./mark.js";
-import { paintTerminals } from "./terminals.js";
+import { paintTerminals, setWallpaper } from "./terminals.js";
 
 // one voxel is 0.4 scene units, the 2.5x density the captain chose
 const S = 0.4;
@@ -159,6 +159,8 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   // the monitor's plane is derived from the screen face of its voxels, inset inside the bezel, at the canvas's 16:9
   const monFace = frontFace(voxels, ...MONITOR_BOX), monRect = screenRect(monFace, MONITOR_INSET, 640 / 360);
   const mon = canvasPlane(THREE, 640, 360, monRect.w, monRect.h); mon.mesh.position.set((monRect.x0 + monRect.x1) / 2, monRect.y0 + monRect.h / 2, monRect.z); root.add(mon.mesh);
+  // the wallpaper behind the terminals loads on its own; until then the screen shows the plain dark fill
+  const wall = new Image(); wall.onload = () => setWallpaper(wall); wall.src = "/wallpaper.png";
   // the jrnxf mark on the back of the monitor, in a soft grey, read from behind
   root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
 

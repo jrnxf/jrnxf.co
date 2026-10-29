@@ -103,9 +103,18 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
+// the picture behind the windows, drawn cover-fit with no smoothing so a dither stays crisp
+let wallpaper = null;
+export function setWallpaper(img) { wallpaper = img; }
+
 export function paintTerminals(x, t) {
-  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1f1d27"); g.addColorStop(1, "#34293a");
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  if (wallpaper) {
+    const s = Math.max(W / wallpaper.width, H / wallpaper.height), w = wallpaper.width * s, h = wallpaper.height * s;
+    x.imageSmoothingEnabled = false; x.drawImage(wallpaper, (W - w) / 2, (H - h) / 2, w, h);
+  } else {
+    const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1f1d27"); g.addColorStop(1, "#34293a");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+  }
   x.fillStyle = "rgba(0,0,0,.3)"; x.fillRect(0, 0, W, 18);
   const wins = windowsAt(t);
   wins.forEach((win, i) => {
