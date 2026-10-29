@@ -59,7 +59,7 @@ export const toScene = ([x, y, z]) => [(x - 0.25) * S, (z + 0.25) * S, -(y + 0.2
 export const SKIN = ["#c98f68", "#b67b58"];
 const hex = ([r, g, b]) => "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 
-// Sorts the voxels into the parts that move: the head (it sways, and the cap turns round) and each
+// Sorts the voxels into the parts that move: the head (it sways) and each
 // forearm (they type). Everything else stands still. Regions are in scene units.
 export function splitParts(voxels, colour) {
   const parts = { body: [], head: [], left: [], right: [] };
@@ -73,27 +73,6 @@ export function splitParts(voxels, colour) {
     else parts.body.push(cell);
   }
   return parts;
-}
-
-// The cap's brim: cap-coloured head voxels behind or in front of the dome. Turning the cap round
-// mirrors them through the dome's centre, front to back.
-export const CAP = ["#3d3936", "#34302d"];
-export function turnCap(head, dir) {
-  const cap = head.filter((v) => CAP.includes(v.c));
-  if (!cap.length) return head;
-  // the dome is the cap above the brim; its front and back bound where the brim can't be
-  const top = Math.max(...cap.map((v) => v.at[1]));
-  const dome = cap.filter((v) => v.at[1] > top - 1.5);
-  const z0 = Math.min(...dome.map((v) => v.at[2])), z1 = Math.max(...dome.map((v) => v.at[2])), zc = (z0 + z1) / 2;
-  const brim = (v) => CAP.includes(v.c) && (v.at[2] > z1 + 0.05 || v.at[2] < z0 - 0.05);
-  const worn = head.filter(brim);
-  const now = worn.length && worn[0].at[2] > zc ? "back" : "front";
-  if (now === dir || !worn.length) return head;
-  const rest = head.filter((v) => !brim(v));
-  const key = (a) => a.map((n) => Math.round(n / S)).join(",");
-  const flipped = worn.map((v) => ({ at: [v.at[0], v.at[1], 2 * zc - v.at[2]], c: v.c }));
-  const taken = new Set(flipped.map((v) => key(v.at)));
-  return [...rest.filter((v) => !taken.has(key(v.at))), ...flipped];
 }
 
 // one InstancedMesh of the visible cells only: a cell buried on all six sides is skipped. Each voxel's
@@ -122,7 +101,7 @@ function voxMesh(THREE, cells, shadows, pivot = [0, 0, 0]) {
 
 const centroid = (cells) => [0, 1, 2].map((a) => cells.reduce((s, v) => s + v.at[a], 0) / cells.length);
 
-export function buildDesk(THREE, vox, { shadows = true, backdrop = "white", cap = "back" } = {}) {
+export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {}) {
   const root = new THREE.Group();
   const { voxels, colour } = parseVox(vox);
   const parts = splitParts(voxels, colour);
@@ -136,7 +115,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white", cap 
   // the head sways a little as I read; each forearm pivots at its elbow, so the hands can type and
   // reach for the trackpad. A forearm's elbow is the middle of its back end.
   const head = new THREE.Group();
-  head.add(voxMesh(THREE, turnCap(parts.head, cap), shadows));
+  head.add(voxMesh(THREE, parts.head, shadows));
   root.add(head);
   const forearms = [];
   for (const [side, sx] of [["left", -1], ["right", 1]]) {
@@ -230,13 +209,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white", cap 
     if (!name) { outline.visible = false; return; }
     const m = hit[name]; outline.visible = true; outline.position.copy(m.position); outline.scale.copy(new THREE.Vector3(m.geometry.parameters.width + 0.6, m.geometry.parameters.height + 0.6, m.geometry.parameters.depth + 0.6));
   }
-  // turns the cap round: the head's mesh is rebuilt with the brim on the other side
-  function setCap(dir) {
-    const old = head.children[0];
-    head.add(voxMesh(THREE, turnCap(parts.head, dir), shadows));
-    if (old) { head.remove(old); old.geometry.dispose(); old.material.dispose(); }
-  }
-  return { root, hit, update, setCap, highlight };
+  return { root, hit, update, highlight };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {

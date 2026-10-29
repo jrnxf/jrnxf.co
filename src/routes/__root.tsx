@@ -6,7 +6,6 @@ import geistMono400 from "@fontsource/geist-mono/latin-400.css?url";
 import geistMono700 from "@fontsource/geist-mono/latin-700.css?url";
 import geistMono400Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
 import geistMono700Woff2 from "@fontsource/geist-mono/files/geist-mono-latin-700-normal.woff2?url";
-import { SHADER_BOOT_SCRIPT } from "@/components/particle-field";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -15,7 +14,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "jrnxf.co" },
       { name: "description", content: "the internet nook of colby thomas" },
-      { name: "theme-color", content: "#09090b" },
+      { name: "theme-color", content: "#ebe6de" },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "jrnxf.co" },
       {
@@ -80,25 +79,11 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className="dark" style={{ background: "#000" }}>
+    <html lang="en" style={{ background: "#ebe6de" }}>
       <head>
         <HeadContent />
       </head>
       <body>
-        <canvas
-          id="dither-bg"
-          suppressHydrationWarning
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-          }}
-          aria-hidden="true"
-        />
-        <script dangerouslySetInnerHTML={{ __html: SHADER_BOOT_SCRIPT }} />
         {children}
         <Scripts />
       </body>

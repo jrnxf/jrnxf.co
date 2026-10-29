@@ -28,7 +28,7 @@ const CSS = `
 `;
 const LABEL = { mug: "the mug · about" };
 
-export function startDesk({ stage, backdrop = "white", cap = "back", onOpenChange }) {
+export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   if (!document.getElementById("desk-css")) { const st = document.createElement("style"); st.id = "desk-css"; st.textContent = CSS; document.head.append(st); }
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const phone = () => innerWidth < 720;
@@ -46,7 +46,7 @@ export function startDesk({ stage, backdrop = "white", cap = "back", onOpenChang
   let desk = null, targets = [], dead = false;
   fetch(VOX_URL).then((r) => { if (!r.ok) throw new Error(`jrnxf.vox: ${r.status}`); return r.arrayBuffer(); }).then((buf) => {
     if (dead) return;
-    desk = buildDesk(THREE, buf, { shadows: true, backdrop, cap });
+    desk = buildDesk(THREE, buf, { shadows: true, backdrop });
     targets = Object.values(desk.hit);
     scene.add(desk.root);
   }).catch((e) => console.error(e));
@@ -143,7 +143,6 @@ export function startDesk({ stage, backdrop = "white", cap = "back", onOpenChang
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  // a cap turned before the voxels arrive is worn that way when they do
-  return { open, close, setCap: (dir) => { cap = dir; desk?.setCap(dir); }, destroy };
+  return { open, close, destroy };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));
