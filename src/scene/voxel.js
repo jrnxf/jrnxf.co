@@ -141,27 +141,34 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
 
   // the flip clock's face: real Lisbon time, each card flips when its digits change
   const clock = canvasPlane(THREE, 256, 120, 4.6, 2.05); clock.mesh.position.set(43, 16.55, 8.02); root.add(clock.mesh);
-  let shown = "", flipAt = 0, prev = "";
+  let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
-    const t = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date()).replace(":", "");
-    if (t !== shown) { prev = shown || t; shown = t; flipAt = now; }
-    const x = clock.ctx, p = reduced ? 1 : Math.min(1, (now - flipAt) / 420);
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
+    const get = (type) => parts.find((q) => q.type === type)?.value ?? "";
+    const t = [get("hour").replace(/^0/, ""), get("minute"), get("dayPeriod").toUpperCase()];
+    const x = clock.ctx;
     x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, 256, 120);
-    x.font = "600 76px Helvetica Neue,Arial,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
-    const card = (i, cx) => {
-      const ch = shown[i], old = prev[i], flipping = ch !== old && p < 1;
-      x.fillStyle = "#151517"; x.fillRect(cx, 10, 56, 100);
+    x.textAlign = "center"; x.textBaseline = "middle";
+    const card = (i, cx, w) => {
+      if (t[i] !== shown[i]) { prev[i] = shown[i] || t[i]; shown[i] = t[i]; flipAt[i] = now; }
+      const ch = shown[i], old = prev[i], p = reduced ? 1 : Math.min(1, (now - flipAt[i]) / 420), flipping = ch !== old && p < 1, mid = cx + w / 2;
+      x.font = "600 76px Helvetica Neue,Arial,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillStyle = "#151517"; x.fillRect(cx, 10, w, 100);
       x.fillStyle = "#f4f2ee";
-      x.save(); x.beginPath(); x.rect(cx, 10, 56, 49); x.clip(); x.fillText(ch, cx + 28, 62); x.restore();
-      x.save(); x.beginPath(); x.rect(cx, 61, 56, 49); x.clip(); x.fillText(flipping && p < 0.5 ? old : ch, cx + 28, 62); x.restore();
+      x.save(); x.beginPath(); x.rect(cx, 10, w, 49); x.clip(); x.fillText(ch, mid, 62); x.restore();
+      x.save(); x.beginPath(); x.rect(cx, 61, w, 49); x.clip(); x.fillText(flipping && p < 0.5 ? old : ch, mid, 62); x.restore();
       if (flipping) {
         const k2 = Math.cos(p * Math.PI), top = k2 > 0;
-        x.save(); x.translate(cx, 60); x.scale(1, Math.abs(k2)); x.fillStyle = "#1c1c1f"; x.fillRect(0, top ? -50 : 0, 56, 50);
-        x.beginPath(); x.rect(0, top ? -50 : 0, 56, 50); x.clip(); x.fillStyle = "#f4f2ee"; x.fillText(top ? old : ch, 28, 2); x.restore();
+        x.save(); x.translate(cx, 60); x.scale(1, Math.abs(k2)); x.fillStyle = "#1c1c1f"; x.fillRect(0, top ? -50 : 0, w, 50);
+        x.beginPath(); x.rect(0, top ? -50 : 0, w, 50); x.clip(); x.fillStyle = "#f4f2ee"; x.fillText(top ? old : ch, w / 2, 2); x.restore();
       }
-      x.fillStyle = "#050506"; x.fillRect(cx, 59, 56, 2);
+      x.fillStyle = "#050506"; x.fillRect(cx, 59, w, 2);
     };
-    card(0, 4); card(1, 62); card(2, 138); card(3, 196);
+    card(0, 8, 112); card(1, 136, 112);
+    // AM/PM sits small in the hour card's bottom-left corner, like a real flip clock
+    shown[2] = t[2];
+    x.font = "700 15px Helvetica Neue,Arial,sans-serif"; x.textAlign = "left"; x.textBaseline = "alphabetic";
+    x.fillStyle = "#f4f2ee"; x.fillText(shown[2], 16, 102);
     x.fillStyle = "#101012"; x.fillRect(120, 0, 16, 120);
     clock.tex.needsUpdate = true;
   }
