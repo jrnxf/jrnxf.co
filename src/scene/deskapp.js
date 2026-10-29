@@ -53,8 +53,8 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   }).catch((e) => console.error(e));
 
   // ---------- camera ----------
-  const R0 = 108;
-  let sph = { r: R0, th: 2.4, ph: 1.32 }, goal = { ...sph };
+  const R0 = 100;
+  let sph = { r: R0, th: 2.28, ph: 1.34 }, goal = { ...sph };
   // the camera frames the desk and the sitter alone
   const look = new THREE.Vector3(32.5, 13, 14), lookGoal = look.clone();
   const fit = 0.8;
@@ -64,17 +64,20 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   // is drawn at full resolution instead of the browser stretching a bitmap. v is the current window
   // (zoom factor + top-left corner as a fraction of the full view), g is where it is easing to
   const ZOOM = [1, 5];
+  // on a wide screen the scene opens left of centre, which is the view window sitting right of centre
+  const homeX = () => (stage.clientWidth / stage.clientHeight > 1.2 ? 0.21 : 0);
   const v = { z: 1, x: 0, y: 0 }, g = { z: 1, x: 0, y: 0 };
   function zoomAt(factor, u, w) {
     const z = clamp(g.z * factor, ZOOM);
     // keep the point under the cursor (u, w as 0..1 across the stage) fixed while the window shrinks
     const cx = g.x + u / g.z, cy = g.y + w / g.z;
-    g.z = z; g.x = clamp(cx - u / z, [0, 1 - 1 / z]); g.y = clamp(cy - w / z, [0, 1 - 1 / z]);
+    const hx = homeX() / z;
+    g.z = z; g.x = clamp(cx - u / z, [hx, 1 - 1 / z + hx]); g.y = clamp(cy - w / z, [0, 1 - 1 / z]);
   }
   function applyView() {
     const w = stage.clientWidth, h = stage.clientHeight;
     if (!w || !h) return;
-    if (v.z < 1.001) cam.clearViewOffset();
+    if (v.z < 1.001 && Math.abs(v.x) < 1e-3 && Math.abs(v.y) < 1e-3) cam.clearViewOffset();
     else cam.setViewOffset(w, h, v.x * w, v.y * h, w / v.z, h / v.z);
   }
   function resize() {
@@ -85,8 +88,9 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
-    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 15 : 13; }
+    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 15 : 10.2; }
     cam.updateProjectionMatrix();
+    if (g.z === 1) g.x = v.x = homeX();
     applyView();
   }
   const ro = new ResizeObserver(resize);
