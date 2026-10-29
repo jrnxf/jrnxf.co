@@ -56,6 +56,34 @@ export function parseVox(buf) {
 // -z toward the monitor; the quarter-voxel offsets keep the screen, clock and mark on their faces
 export const toScene = ([x, y, z]) => [(x - 0.25) * S, (z + 0.25) * S, -(y + 0.25) * S];
 
+// The front face of the voxels inside a box ([min, max] per axis, scene units): only the front-most layer
+// (largest z), and of that layer only the rows as wide as its widest, so a stand or lip poking above or
+// below the case is not part of the face. It is the box those voxels' outer faces span; the box given
+// is just there to pick the object out.
+export function frontFace(voxels, [x0, x1], [y0, y1], [z0, z1]) {
+  const cells = voxels.map(toScene).filter(([x, y, z]) => x > x0 && x < x1 && y > y0 && y < y1 && z > z0 && z < z1);
+  const zf = Math.max(...cells.map((c) => c[2])), front = cells.filter((c) => c[2] > zf - S / 2);
+  const rows = new Map();
+  for (const c of front) { const k = Math.round(c[1] / S); (rows.get(k) ?? rows.set(k, []).get(k)).push(c); }
+  const widest = Math.max(...[...rows.values()].map((r) => r.length));
+  const face = [...rows.values()].filter((r) => r.length >= widest * 0.8).flat();
+  const xs = face.map((c) => c[0]), ys = face.map((c) => c[1]);
+  return { x0: Math.min(...xs) - S / 2, x1: Math.max(...xs) + S / 2, y0: Math.min(...ys) - S / 2, y1: Math.max(...ys) + S / 2, z: zf + S / 2 };
+}
+
+// a screen laid on a face: inset on the left, right and top, and as tall as its aspect (width / height)
+// says, or down to the same inset at the bottom without one. It sits a hair in front of the face.
+export const SCREEN_LIFT = 0.01;
+export function screenRect(face, inset, aspect) {
+  const w = face.x1 - face.x0 - 2 * inset, h = aspect ? w / aspect : face.y1 - face.y0 - 2 * inset;
+  return { x0: face.x0 + inset, x1: face.x1 - inset, y1: face.y1 - inset, y0: face.y1 - inset - h, w, h, z: face.z + SCREEN_LIFT };
+}
+
+// the two screens' faces in the scene, picked out of the voxels by the box each object sits in
+export const MONITOR_BOX = [[21, 41], [17, 29], [4, 5.8]];
+export const CLOCK_BOX = [[40, 46], [15.5, 18], [5, 9]];
+export const MONITOR_INSET = 0.6, CLOCK_INSET = 0.2;
+
 export const SKIN = ["#c98f68", "#b67b58"];
 const hex = ([r, g, b]) => "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 
@@ -128,7 +156,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   }
 
   // screens: canvases drawn every frame or so, laid on the monitor's face and the clock's
-  const mon = canvasPlane(THREE, 640, 360, 18.2, 10.24); mon.mesh.position.set(31, 22.5, 5.8); root.add(mon.mesh);
+  // the monitor's plane is derived from the screen face of its voxels, inset inside the bezel, at the canvas's 16:9
+  const monFace = frontFace(voxels, ...MONITOR_BOX), monRect = screenRect(monFace, MONITOR_INSET, 640 / 360);
+  const mon = canvasPlane(THREE, 640, 360, monRect.w, monRect.h); mon.mesh.position.set((monRect.x0 + monRect.x1) / 2, monRect.y0 + monRect.h / 2, monRect.z); root.add(mon.mesh);
   // the jrnxf mark on the back of the monitor, in a soft grey, read from behind
   root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
 
@@ -140,24 +170,19 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   if (shadows) { key.castShadow = true; key.shadow.mapSize.set(2048, 2048); const s = key.shadow.camera; s.left = -40; s.right = 40; s.top = 40; s.bottom = -40; s.near = 1; s.far = 160; key.shadow.bias = -0.0015; key.shadow.normalBias = 0.06; }
 
   // the flip clock's face: real Lisbon time, each card flips when its digits change
-  // the plane is sized and placed from the clock's own voxels: the front-most layer of the case, in
-  // the box the clock sits in. It lies exactly on that face and wins the depth test through a polygon
-  // offset, so it cannot stand off the case or reach past its edges
-  const face = voxels.map(toScene).filter(([x, y, z]) => x > 40 && x < 46 && y > 15.5 && y < 18 && z > 5 && z < 9);
-  const faceZ = Math.max(...face.map((c) => c[2])), front = face.filter((c) => c[2] > faceZ - S / 2);
-  const [fx0, fx1] = [Math.min(...front.map((c) => c[0])) - S / 2, Math.max(...front.map((c) => c[0])) + S / 2];
-  const [fy0, fy1] = [Math.min(...front.map((c) => c[1])) - S / 2, Math.max(...front.map((c) => c[1])) + S / 2];
-  // inset inside the case's edges (half a voxel top and bottom) at the canvas's own aspect, so no edge of the screen reaches past the case
-  const faceH = fy1 - fy0 - S, faceW = (faceH * 256) / 120;
-  const clock = canvasPlane(THREE, 256, 120, faceW, faceH); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2); root.add(clock.mesh);
-  Object.assign(clock.mesh.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  // the plane is derived from the case's front-most layer of voxels, inset inside its edges and a hair
+  // in front of it. Its canvas has the plane's own aspect, with the digits drawn centred inside it.
+  const clockFace = frontFace(voxels, ...CLOCK_BOX), clockRect = screenRect(clockFace, CLOCK_INSET);
+  const CW = Math.round((120 * clockRect.w) / clockRect.h);
+  const clock = canvasPlane(THREE, CW, 120, clockRect.w, clockRect.h); clock.mesh.position.set((clockRect.x0 + clockRect.x1) / 2, clockRect.y0 + clockRect.h / 2, clockRect.z); root.add(clock.mesh);
   let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
     const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
     const get = (type) => parts.find((q) => q.type === type)?.value ?? "";
     const t = [get("hour").replace(/^0/, ""), get("minute"), get("dayPeriod").toUpperCase()];
     const x = clock.ctx;
-    x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, 256, 120);
+    x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, CW, 120);
+    x.save(); x.translate((CW - 256) / 2, 0);
     x.textAlign = "center"; x.textBaseline = "middle";
     const card = (i, cx, w) => {
       if (t[i] !== shown[i]) { prev[i] = shown[i] || t[i]; shown[i] = t[i]; flipAt[i] = now; }
@@ -180,6 +205,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     x.font = "700 15px Helvetica Neue,Arial,sans-serif"; x.textAlign = "left"; x.textBaseline = "alphabetic";
     x.fillStyle = "#f4f2ee"; x.fillText(shown[2], 16, 102);
     x.fillStyle = "#101012"; x.fillRect(120, 0, 16, 120);
+    x.restore();
     clock.tex.needsUpdate = true;
   }
   // the mug is wherever the coffee is; steam rises from it in soft puffs that drift and fade
