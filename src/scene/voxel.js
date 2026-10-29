@@ -105,6 +105,11 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   const root = new THREE.Group();
   const { voxels, colour } = parseVox(vox);
   const parts = splitParts(voxels, colour);
+  // the mug and its coffee are cut out of the still scene: a drink lifts them
+  const MUG = ["#f3ecdf", "#4a2c17", "#e2dfd8", "#c9c6bf", "#9e9a92"];
+  const isMug = ({ at: [x, y, z], c }) => MUG.includes(c) && x > 38.5 && x < 42.6 && y > 13.6 && y < 16.3 && z > 10.5 && z < 13.3;
+  const mugCells = parts.body.filter(isMug);
+  parts.body = parts.body.filter((v) => !isMug(v));
   root.add(voxMesh(THREE, parts.body, shadows));
   const bottom = Math.min(...voxels.map((v) => v[2])) * S + 0.1 - S / 2;
 
@@ -124,8 +129,13 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     const back = Math.max(...cells.map((v) => v.at[2]));
     const el = centroid(cells.filter((v) => v.at[2] > back - 1));
     const g = new THREE.Group(); g.position.set(...el); g.add(voxMesh(THREE, cells, shadows, el)); root.add(g);
-    forearms.push({ g, sx, phase: Math.random() * 6 });
+    forearms.push({ g, sx, phase: Math.random() * 6, el });
   }
+  // the mug is its own chunk pivoted at the right elbow, so it can ride with the arm for a drink
+  const rightArm = forearms.find((f) => f.sx > 0);
+  const mugG = new THREE.Group();
+  if (rightArm) { mugG.position.set(...rightArm.el); mugG.add(voxMesh(THREE, mugCells, shadows, rightArm.el)); root.add(mugG); }
+  else root.add(voxMesh(THREE, mugCells, shadows));
 
   // screens: canvases drawn every frame or so, laid on the monitor's face and the clock's
   const mon = canvasPlane(THREE, 640, 360, 18.2, 10.24); mon.mesh.position.set(31, 22.5, 5.8); root.add(mon.mesh);
@@ -179,14 +189,19 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     clock.tex.needsUpdate = true;
   }
   // the mug is wherever the coffee is; steam rises from it in soft puffs that drift and fade
-  const coffee = parts.body.filter((v) => v.c === "#4a2c17");
+  const coffee = mugCells.filter((v) => v.c === "#4a2c17");
   const [mx, my, mz] = coffee.length ? centroid(coffee) : [41.4, 15.7, 11.4];
   const steam = [];
   for (let i = 0; i < 5; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); root.add(m); steam.push({ m, off: i / 5 }); }
+  const mugAt = new THREE.Vector3();
   function drawSteam(now, reduced) {
+    // the steam and the click target follow the mug wherever the drink has taken it
+    mugAt.set(mx, my, mz);
+    if (rightArm) { mugG.updateMatrix(); mugAt.sub(new THREE.Vector3(...rightArm.el)).applyMatrix4(mugG.matrix); }
+    const [bx, by, bz] = [mugAt.x - mx, mugAt.y - my, mugAt.z - mz];
     for (const s2 of steam) {
       const t = reduced ? 0.4 + s2.off * 0.3 : ((now / 2600 + s2.off) % 1);
-      s2.m.position.set(mx + Math.sin(t * 6 + s2.off * 9) * 0.35, my + 0.7 + t * 3.2, mz + Math.cos(t * 5 + s2.off * 7) * 0.25);
+      s2.m.position.set(mx + bx + Math.sin(t * 6 + s2.off * 9) * 0.35, my + by + 0.7 + t * 3.2, mz + bz + Math.cos(t * 5 + s2.off * 7) * 0.25);
       s2.m.material.opacity = (reduced ? 0.25 : Math.sin(t * Math.PI) * 0.45);
       s2.m.scale.setScalar(0.7 + t * 1.1);
     }
@@ -199,6 +214,30 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   outline.visible = false; root.add(outline);
 
   // ---------- motion ----------
+  // every 20-40 s he lifts the mug to drink: a few held poses of the right arm and mug as one rigid chunk
+  // (rest, halfway, at the mouth, hold about a second, halfway, rest), stepped rather than blended
+  const POSES = [
+    { ry: 0.0, rz: 0.0, t: [0, 0, 0] },
+    { ry: 0.4, rz: 0.95, t: [1.2, 0, 0] },
+    { ry: 0.8, rz: 1.9, t: [3.4, 0.4, 0] },
+  ];
+  const DRINK = [[1, 380], [2, 380], [2, 1100], [1, 380], [0, 380]];
+  let drinkAt = 8000, drinkStart = -1;
+  const setPose = (i) => {
+    const q = POSES[i], f = rightArm;
+    f.g.position.set(f.el[0] + q.t[0], f.el[1] + q.t[1], f.el[2] + q.t[2]);
+    f.g.rotation.set(0, q.ry, q.rz, "YXZ");
+    mugG.position.copy(f.g.position); mugG.rotation.copy(f.g.rotation);
+  };
+  function drink(now) {
+    if (!rightArm) return false;
+    if (drinkStart < 0) { if (now < drinkAt) return false; drinkStart = now; }
+    let t = now - drinkStart;
+    for (const [pose, ms] of DRINK) { if (t < ms) { setPose(pose); return true; } t -= ms; }
+    drinkStart = -1; drinkAt = now + 20000 + Math.random() * 20000;
+    rightArm.g.position.set(...rightArm.el); rightArm.g.rotation.set(0, 0, 0); mugG.position.set(...rightArm.el); mugG.rotation.set(0, 0, 0);
+    return false;
+  }
   let frames = 0, lastDraw = 0;
   function update(now, reduced) {
     // some software WebGL drivers keep a new canvas texture blank after the scene is built; swapping in
@@ -207,7 +246,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     if (!reduced) {
       // typing in bursts: each hand taps on its own rhythm; every few seconds the right hand reaches for the trackpad
       const burst = Math.sin(now / 1900) > -0.35, reach = (now / 1000) % 9 > 7.4;
+      const drinking = drink(now);
       for (const f of forearms) {
+        if (drinking && f === rightArm) continue;
         const tap = burst ? Math.max(0, Math.sin(now / (f.sx < 0 ? 83 : 97) + f.phase)) : 0;
         const toPad = reach && f.sx > 0;
         f.g.rotation.x += ((toPad ? 0.02 : -tap * 0.035) - f.g.rotation.x) * 0.35;
@@ -217,6 +258,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     }
     if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000); mon.tex.needsUpdate = true; drawClock(now, reduced); }
     drawSteam(now, reduced);
+    hit.mug.position.set(mx + 0.2 + (mugAt.x - mx), my - 0.5 + (mugAt.y - my), mz + (mugAt.z - mz));
   }
   function highlight(name) {
     if (!name) { outline.visible = false; return; }
