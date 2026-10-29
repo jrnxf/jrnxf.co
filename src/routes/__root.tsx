@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "jrnxf.co" },
       { name: "description", content: "the internet nook of colby thomas" },
-      { name: "theme-color", content: "#09090b" },
+      { name: "theme-color", content: "#ebe6de" },
       { property: "og:type", content: "website" },
       { property: "og:title", content: "jrnxf.co" },
       {
@@ -79,7 +79,7 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className="dark" style={{ background: "#000" }}>
+    <html lang="en" style={{ background: "#ebe6de" }}>
       <head>
         <HeadContent />
       </head>

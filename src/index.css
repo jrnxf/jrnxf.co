@@ -6,25 +6,10 @@
   --radius-lg: 0.5rem;
   --radius-md: calc(var(--radius-lg) - 2px);
   --radius-sm: calc(var(--radius-lg) - 4px);
-
-  --color-background: #000000;
-  --color-foreground: #e5e5e5;
-  --color-card: rgba(255, 255, 255, 0.03);
-  --color-card-foreground: #e5e5e5;
-  --color-muted: #333333;
-  --color-muted-foreground: #999999;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-ring: #666666;
-  --color-accent: oklch(0.78 0.12 25);
-}
-
-* {
-  border-color: var(--color-border);
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: #ebe6de;
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
