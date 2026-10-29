@@ -1,3 +1,4 @@
+import { DeskScene } from "@/components/desk-scene";
 import { LanLink } from "@/components/lan-link";
 import { Neofetch } from "@/components/neofetch";
 import { ShaderBackground } from "@/components/particle-field";
@@ -36,6 +37,7 @@ export default function App({ repos, weather }: { repos: GitHubRepo[]; weather: 
   return (
     <>
       <ShaderBackground />
+      <DeskScene />
       <div className="relative z-10 flex min-h-dvh flex-col px-[22px] pb-10 pt-[max(22px,env(safe-area-inset-top))] font-mono sm:px-14 sm:pb-12 sm:pt-10">
         {/* status line */}
         <div className="flex justify-between text-xs tracking-[0.02em] text-neutral-500">
