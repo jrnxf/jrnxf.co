@@ -141,14 +141,16 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
 
   // the flip clock's face: real Lisbon time, each card flips when its digits change
   // the plane is sized and placed from the clock's own voxels: the front-most layer of the case, in
-  // the box the clock sits in, with a hair of offset so it does not z-fight with that face
+  // the box the clock sits in. It lies exactly on that face and wins the depth test through a polygon
+  // offset, so it cannot stand off the case or reach past its edges
   const face = voxels.map(toScene).filter(([x, y, z]) => x > 40 && x < 46 && y > 15.5 && y < 18 && z > 5 && z < 9);
   const faceZ = Math.max(...face.map((c) => c[2])), front = face.filter((c) => c[2] > faceZ - S / 2);
   const [fx0, fx1] = [Math.min(...front.map((c) => c[0])) - S / 2, Math.max(...front.map((c) => c[0])) + S / 2];
   const [fy0, fy1] = [Math.min(...front.map((c) => c[1])) - S / 2, Math.max(...front.map((c) => c[1])) + S / 2];
   // inset inside the case's edges (half a voxel top and bottom) at the canvas's own aspect, so no edge of the screen reaches past the case
   const faceH = fy1 - fy0 - S, faceW = (faceH * 256) / 120;
-  const clock = canvasPlane(THREE, 256, 120, faceW, faceH); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2 + 0.01); root.add(clock.mesh);
+  const clock = canvasPlane(THREE, 256, 120, faceW, faceH); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2); root.add(clock.mesh);
+  Object.assign(clock.mesh.material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
     const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
@@ -224,7 +226,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     if (!name) { outline.visible = false; return; }
     const m = hit[name]; outline.visible = true; outline.position.copy(m.position); outline.scale.copy(new THREE.Vector3(m.geometry.parameters.width + 0.6, m.geometry.parameters.height + 0.6, m.geometry.parameters.depth + 0.6));
   }
-  return { root, hit, update, highlight };
+  // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
+  const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
+  return { root, hit, update, highlight, framing };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {
