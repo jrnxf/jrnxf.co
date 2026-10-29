@@ -50,22 +50,24 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     desk = buildDesk(THREE, buf, { shadows: true, backdrop });
     targets = Object.values(desk.hit);
     scene.add(desk.root);
+    if (preset.r == null) goal.r = sph.r = distance();
     reframe(true);
   }).catch((e) => console.error(e));
 
   // ---------- camera ----------
   const R0 = 100;
-  // the start views: a back three-quarter from the light side (A), over his shoulder at the screen (B),
-  // low and large (C), and side on to the desk (D). r and look are null where the screen size decides.
-  // center puts the scene's box in the middle of the viewport; B is a close-up, so it stays as framed.
+  // the start views: over his shoulder at the screen (B, where it opens), a back three-quarter from the
+  // light side (A), low and large (C), and side on to the desk (D). r and look are null where the screen
+  // size decides. center puts the scene in the middle of the viewport; fit backs the camera off until
+  // the whole scene sits inside it with a margin.
   const DESK_LOOK = [32.5, 13, 14];
   const PRESETS = {
     A: { th: 2.28, ph: 1.17, r: null, look: null, center: true },
-    B: { th: 0.3, ph: 1.1, r: 42, look: [31, 20, 8], center: false },
+    B: { th: 0.3, ph: 1.1, r: null, look: null, center: true, fit: true },
     C: { th: 2.28, ph: 1.5, r: 78, look: DESK_LOOK, center: true },
     D: { th: Math.PI / 2, ph: 1.45, r: 85, look: DESK_LOOK, center: true },
   };
-  let preset = PRESETS.A;
+  let preset = PRESETS.B;
   let sph = { r: R0, th: preset.th, ph: preset.ph }, goal = { ...sph };
   // the camera frames the desk and the sitter alone
   const look = new THREE.Vector3(...DESK_LOOK), lookGoal = look.clone();
@@ -84,12 +86,10 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const home = { x: 0, y: 0 };
   const v = { z: 1, x: 0, y: 0 }, g = { z: 1, x: 0, y: 0 };
   const corner = new THREE.Vector3();
-  function computeHome() {
-    home.x = home.y = 0;
-    if (!desk?.framing || !preset.center) return;
-    // project the box from the pose the camera is heading for, with no window, and measure where the voxels land
+  // where the voxels land on screen (as -1..1 extents) from the pose the camera is heading for at distance r, with no window
+  function measure(r) {
     cam.clearViewOffset();
-    const { r, th, ph } = goal;
+    const { th, ph } = goal;
     cam.position.set(lookGoal.x + r * Math.sin(ph) * Math.sin(th), lookGoal.y + r * Math.cos(ph), lookGoal.z + r * Math.sin(ph) * Math.cos(th));
     cam.lookAt(lookGoal); cam.updateMatrixWorld();
     const ndc = [[Infinity, -Infinity], [Infinity, -Infinity]];
@@ -98,7 +98,24 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
       ndc[0][0] = Math.min(ndc[0][0], corner.x); ndc[0][1] = Math.max(ndc[0][1], corner.x);
       ndc[1][0] = Math.min(ndc[1][0], corner.y); ndc[1][1] = Math.max(ndc[1][1], corner.y);
     }
-    // the window moves by the box centre's offset from the middle: right to bring it left, down to bring it up
+    return ndc;
+  }
+  // the distance at which the whole scene fits with a margin: perspective is close to 1/r, so a few corrections settle it
+  function fitR() {
+    if (!desk?.framing) return autoR();
+    let r = goal.r || R0;
+    for (let i = 0; i < 5; i++) {
+      const [[x0, x1], [y0, y1]] = measure(r);
+      r = clamp((r * Math.max((x1 - x0) / 2, (y1 - y0) / 2)) / 0.8, [30, 400]);
+    }
+    return r;
+  }
+  const distance = () => (preset.r != null ? preset.r : preset.fit ? fitR() : autoR());
+  function computeHome() {
+    home.x = home.y = 0;
+    if (!desk?.framing || !preset.center) return;
+    const ndc = measure(goal.r);
+    // the window moves by the scene centre's offset from the middle: right to bring it left, down to bring it up
     home.x = (ndc[0][0] + ndc[0][1]) / 4; home.y = -(ndc[1][0] + ndc[1][1]) / 4;
   }
   // snap puts the window straight on its new home; otherwise it eases there
@@ -112,8 +129,9 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     const p = PRESETS[name];
     if (!p || openName) return;
     preset = p;
-    goal.th = p.th; goal.ph = p.ph; goal.r = p.r ?? autoR();
+    goal.th = p.th; goal.ph = p.ph;
     lookGoal.set(...(p.look ?? [DESK_LOOK[0], autoY(), DESK_LOOK[2]]));
+    goal.r = distance();
     g.z = 1; reframe(false);
   }
   function zoomAt(factor, u, w) {
@@ -137,7 +155,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
-    if (!openName && preset.r == null) { goal.r = sph.r = autoR(); lookGoal.y = look.y = autoY(); }
+    if (!openName && preset.r == null) { if (!preset.look) lookGoal.y = look.y = autoY(); goal.r = sph.r = distance(); }
     cam.updateProjectionMatrix();
     computeHome();
     if (g.z === 1) { g.x = v.x = home.x; g.y = v.y = home.y; }
@@ -221,15 +239,22 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
 
   // ---------- loop ----------
   // the room only renders while it is on screen, so scrolling past it costs nothing
-  let raf = 0, visible = true, paused = false, sim = 0, lastNow = 0;
+  let raf = 0, visible = true, paused = false, sim = 0, lastNow = 0, swayOff = 0, swayClock = 0, swaying = false;
   const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible && !raf) raf = requestAnimationFrame(frame); });
   function frame(now) {
     raf = 0;
     if (!visible) return;
     // motion runs on its own clock so a pause freezes the sway, typing, steam and clock together
-    if (!paused) sim += lastNow ? now - lastNow : 0;
+    const dt = !paused && lastNow ? now - lastNow : 0;
+    sim += dt;
     lastNow = now;
-    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(sim / 6000) * 0.0021;
+    // the sway swings evenly around wherever the view rests: each time it starts, it starts from zero
+    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) {
+      if (!swaying) { swaying = true; swayClock = 0; swayOff = 0; }
+      swayClock += dt;
+      const off = Math.sin(swayClock / 6000) * 0.4;
+      goal.th += off - swayOff; swayOff = off;
+    } else swaying = false;
     const k = reduced ? 1 : 0.08;
     const ease = (v, g, eps) => (Math.abs(g - v) < eps ? g : v + (g - v) * k);
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
