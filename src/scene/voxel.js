@@ -146,7 +146,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   const faceZ = Math.max(...face.map((c) => c[2])), front = face.filter((c) => c[2] > faceZ - S / 2);
   const [fx0, fx1] = [Math.min(...front.map((c) => c[0])) - S / 2, Math.max(...front.map((c) => c[0])) + S / 2];
   const [fy0, fy1] = [Math.min(...front.map((c) => c[1])) - S / 2, Math.max(...front.map((c) => c[1])) + S / 2];
-  const clock = canvasPlane(THREE, 256, 120, fx1 - fx0, fy1 - fy0); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2 + 0.01); root.add(clock.mesh);
+  // inset inside the case's edges (half a voxel top and bottom) at the canvas's own aspect, so no edge of the screen reaches past the case
+  const faceH = fy1 - fy0 - S, faceW = (faceH * 256) / 120;
+  const clock = canvasPlane(THREE, 256, 120, faceW, faceH); clock.mesh.position.set((fx0 + fx1) / 2, (fy0 + fy1) / 2, faceZ + S / 2 + 0.01); root.add(clock.mesh);
   let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
     const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
