@@ -38,7 +38,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   renderer.setPixelRatio(pixelRatio());
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.NoToneMapping;
   stage.append(renderer.domElement);
   // the canvas owns touch gestures: one finger turns the room, two fingers zoom it
   renderer.domElement.style.touchAction = "none";

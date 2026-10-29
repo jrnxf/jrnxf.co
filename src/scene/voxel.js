@@ -103,23 +103,22 @@ export function splitParts(voxels, colour) {
   return parts;
 }
 
-// one InstancedMesh of the visible cells only: a cell buried on all six sides is skipped. Each voxel's
-// colour moves by a small stable amount, so flat colours read as voxels in the light.
+// one InstancedMesh of the visible cells only: a cell buried on all six sides is skipped. Every voxel
+// is flat in its palette colour; the light alone makes one face differ from the next.
 function voxMesh(THREE, cells, shadows, pivot = [0, 0, 0]) {
   const key = (a) => a.map((n) => Math.round(n / S)).join(",");
   const filled = new Set(cells.map((v) => key(v.at)));
   const shown = cells.filter(({ at: [x, y, z] }) => ![[S, 0, 0], [-S, 0, 0], [0, S, 0], [0, -S, 0], [0, 0, S], [0, 0, -S]].every(([a, b, c]) => filled.has(key([x + a, y + b, z + c]))));
   const n = shown.length;
   const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(S, S, S), new THREE.MeshLambertMaterial({ color: 0xffffff }), n);
-  const M = mesh.instanceMatrix.array, colors = new Float32Array(n * 3);
+  const M = mesh.instanceMatrix.array, colors = new Float32Array(n * 3), tint = new THREE.Color();
   shown.forEach(({ at, c }, q) => {
     const o = q * 16;
     M[o] = 1; M[o + 5] = 1; M[o + 10] = 1; M[o + 15] = 1;
     M[o + 12] = at[0] - pivot[0]; M[o + 13] = at[1] - pivot[1]; M[o + 14] = at[2] - pivot[2];
-    const [i, j, l] = at.map((t) => Math.round(t / S));
-    let h = Math.imul(i * 374761393 + j * 668265263 + l * 2147483647, 1274126177); h ^= h >>> 15;
-    const f = 1 + (((h >>> 0) / 4294967296) - 0.5) * 0.06, nn = parseInt(c.slice(1), 16);
-    colors[q * 3] = Math.min(1, (((nn >> 16) & 255) / 255) * f); colors[q * 3 + 1] = Math.min(1, (((nn >> 8) & 255) / 255) * f); colors[q * 3 + 2] = Math.min(1, ((nn & 255) / 255) * f);
+    // every voxel gets exactly its palette colour; the palette is sRGB, the shading works in linear light
+    tint.setHex(parseInt(c.slice(1), 16)).convertSRGBToLinear();
+    colors[q * 3] = tint.r; colors[q * 3 + 1] = tint.g; colors[q * 3 + 2] = tint.b;
   });
   mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
   mesh.instanceMatrix.needsUpdate = true;
@@ -165,9 +164,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
 
   // lights: from over the viewer's shoulder, bright and even, so the figure reads in full
-  root.add(new THREE.HemisphereLight("#ffe9d2", backdrop === "white" ? "#a08c78" : "#2a2624", 0.3));
-  root.add(new THREE.AmbientLight("#ffe4c8", 0.05));
-  const key = new THREE.DirectionalLight("#ffcf9e", 0.58);
+  // white light and no tone mapping, so a palette colour reads as itself
+  root.add(new THREE.HemisphereLight("#ffffff", backdrop === "white" ? "#a8a8a8" : "#2a2a2a", 0.75));
+  const key = new THREE.DirectionalLight("#ffffff", 0.5);
   key.position.set(70, 52, 58); key.target.position.set(26, 0, 22); root.add(key, key.target);
   if (shadows) { key.castShadow = true; key.shadow.mapSize.set(2048, 2048); const s = key.shadow.camera; s.left = -40; s.right = 40; s.top = 40; s.bottom = -40; s.near = 1; s.far = 160; key.shadow.bias = -0.0015; key.shadow.normalBias = 0.06; }
 
