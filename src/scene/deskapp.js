@@ -52,6 +52,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     scene.add(desk.root);
     if (preset.r == null) goal.r = sph.r = distance();
     reframe(true);
+    startIntro();
   }).catch((e) => console.error(e));
 
   // ---------- camera ----------
@@ -125,10 +126,35 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     // computing the home cleared the window, so put it back
     applyView();
   }
+  // The opening move: the scene starts side on (D) and one slow eased move takes the camera to the
+  // zoomed-out over-the-shoulder view (B), where the sway takes over. Touching the scene cancels it.
+  let intro = null;
+  const INTRO_MS = 5000;
+  const poseNow = () => ({ th: goal.th, ph: goal.ph, r: goal.r, look: lookGoal.clone(), hx: home.x, hy: home.y });
+  function usePose(q) {
+    sph.th = goal.th = q.th; sph.ph = goal.ph = q.ph; sph.r = goal.r = q.r;
+    look.copy(q.look); lookGoal.copy(q.look);
+    g.z = v.z = 1; g.x = v.x = q.hx; g.y = v.y = q.hy;
+    applyView();
+  }
+  function startIntro() {
+    if (reduced || intro) return;
+    setView("D"); const a = poseNow();
+    setView("B"); const b = poseNow();
+    usePose(a);
+    intro = { a, b, t0: null };
+  }
+  function stepIntro(now) {
+    intro.t0 ??= now;
+    const u = Math.min(1, (now - intro.t0) / INTRO_MS), e = u < 0.5 ? 4 * u ** 3 : 1 - (-2 * u + 2) ** 3 / 2;
+    const { a, b } = intro, mix = (x, y) => x + (y - x) * e;
+    usePose({ th: mix(a.th, b.th), ph: mix(a.ph, b.ph), r: mix(a.r, b.r), look: a.look.clone().lerp(b.look, e), hx: mix(a.hx, b.hx), hy: mix(a.hy, b.hy) });
+    if (u === 1) intro = null;
+  }
   function setView(name) {
     const p = PRESETS[name];
     if (!p || openName) return;
-    preset = p;
+    preset = p; intro = null;
     goal.th = p.th; goal.ph = p.ph;
     lookGoal.set(...(p.look ?? [DESK_LOOK[0], autoY(), DESK_LOOK[2]]));
     goal.r = distance();
@@ -155,6 +181,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
+    if (!openName) intro = null;
     if (!openName && preset.r == null) { if (!preset.look) lookGoal.y = look.y = autoY(); goal.r = sph.r = distance(); }
     cam.updateProjectionMatrix();
     computeHome();
@@ -175,6 +202,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const stageUV = (cx, cy) => { const r = el.getBoundingClientRect(); return [(cx - r.left) / r.width, (cy - r.top) / r.height]; };
   el.addEventListener("wheel", (e) => {
     if (openName) return;
+    intro = null;
     e.preventDefault();
     // pinch on a trackpad arrives as ctrl+wheel with small deltas; a plain wheel needs a gentler step
     const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
@@ -183,6 +211,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   }, { passive: false });
   const pinchSpan = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
   el.addEventListener("pointerdown", (e) => {
+    intro = null;
     if (e.pointerType === "touch") {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); el.setPointerCapture(e.pointerId);
       if (touches.size === 2 && !openName) { drag = null; pinched = true; pinch = pinchSpan(); return; }
@@ -249,7 +278,8 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     sim += dt;
     lastNow = now;
     // the sway swings evenly around wherever the view rests: each time it starts, it starts from zero
-    if (!paused && !reduced && !drag && !openName && now - lastMove > 2500) {
+    if (intro) stepIntro(now);
+    if (!intro && !paused && !reduced && !drag && !openName && now - lastMove > 2500) {
       if (!swaying) { swaying = true; swayClock = 0; swayOff = 0; }
       swayClock += dt;
       const off = Math.sin(swayClock / 6000) * 0.4;
