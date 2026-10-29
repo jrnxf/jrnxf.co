@@ -67,7 +67,9 @@ export function DeskScene() {
           dangerouslySetInnerHTML={{ __html: MARK }}
         />
         <p className="mt-2.5 font-['Fraunces',serif] text-base font-light leading-[1.35] text-[rgba(42,38,34,0.9)] sm:text-[clamp(17px,2vw,21px)]">
-          Small, sharp tools, made at a desk by the sea in northern Portugal.
+          fast tools, slow mornings
+          <br />
+          vila chã, portugal
         </p>
       </div>
       <div
