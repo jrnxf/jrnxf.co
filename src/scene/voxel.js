@@ -235,7 +235,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   function update(now, reduced) {
     // some software WebGL drivers keep a new canvas texture blank after the scene is built; swapping in
     // a fresh texture once, after the first frames, makes the screen show reliably
-    if (++frames === 6) { const old = mon.mesh.material.map, t = new THREE.CanvasTexture(mon.canvas); t.encoding = THREE.sRGBEncoding; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; mon.mesh.material.map = t; mon.tex = t; mon.mesh.material.needsUpdate = true; old.dispose(); }
+    if (++frames === 6) { const old = mon.mesh.material.map, t = screenTexture(THREE, mon.canvas); mon.mesh.material.map = t; mon.tex = t; mon.mesh.material.needsUpdate = true; old.dispose(); }
     if (!reduced) {
       // typing in bursts: each hand taps on its own rhythm; every few seconds the right hand reaches for the trackpad
       const burst = Math.sin(now / 1900) > -0.35, reach = (now / 1000) % 9 > 7.4;
@@ -269,10 +269,17 @@ function markPlane(THREE, width, colour, [px, py, pz]) {
   mesh.position.set(px, py, pz); mesh.rotation.y = Math.PI;
   return mesh;
 }
+// A screen's texture is filtered with mipmaps and anisotropy, so fine detail (a dither, small type) is
+// averaged rather than sampled point by point and holds still while the camera moves.
+function screenTexture(THREE, canvas) {
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter; tex.anisotropy = 16;
+  return tex;
+}
 function canvasPlane(THREE, cw, ch, w, h) {
   const canvas = document.createElement("canvas"); canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  const tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+  const tex = screenTexture(THREE, canvas);
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
   return { canvas, ctx, tex, mesh };
 }
