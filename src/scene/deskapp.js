@@ -54,7 +54,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
 
   // ---------- camera ----------
   const R0 = 108;
-  let sph = { r: R0, th: 0.78, ph: 1.12 }, goal = { ...sph };
+  let sph = { r: R0, th: 2.4, ph: 1.32 }, goal = { ...sph };
   // the camera frames the desk and the sitter alone
   const look = new THREE.Vector3(32.5, 13, 14), lookGoal = look.clone();
   const fit = 0.8;
@@ -172,7 +172,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   function frame(now) {
     raf = 0;
     if (!visible) return;
-    if (!reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(now / 6000) * 0.0006;
+    if (!reduced && !drag && !openName && now - lastMove > 2500) goal.th += Math.sin(now / 6000) * 0.0009;
     const k = reduced ? 1 : 0.08;
     const ease = (v, g, eps) => (Math.abs(g - v) < eps ? g : v + (g - v) * k);
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
