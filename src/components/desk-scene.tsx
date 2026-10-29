@@ -12,7 +12,6 @@ const PANEL_COLORS = {
   "--p-fg": "#2a2622",
   "--p-muted": "#6d655c",
   "--p-line": "#ddd5ca",
-  "--p-key": "#efe9e1",
 } as React.CSSProperties;
 
 // the visitor's last cap choice, kept in this browser only

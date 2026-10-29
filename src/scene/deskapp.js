@@ -1,9 +1,10 @@
-// The app around the voxel desk: the renderer, an orbit camera, picking, and the small panels the
-// mug and the window open. `startDesk` returns a handle whose `destroy` undoes it all.
+// The app around the voxel desk: the renderer, an orbit camera, picking, and the small panel the
+// mug opens. `startDesk` returns a handle whose `destroy` undoes it all.
 
 import * as THREE from "three";
-import { buildDesk, lightForHour } from "./voxel.js";
+import { buildDesk } from "./voxel.js";
 import { markSVG } from "./mark.js";
+import VOX_URL from "./jrnxf.vox?url";
 
 const CSS = `
 .desk-tip{position:absolute;z-index:5;pointer-events:none;font:500 12px "Geist Mono",ui-monospace,monospace;color:var(--tip-fg,#1d1a16);background:var(--tip-bg,rgba(243,236,223,.94));padding:6px 10px;border-radius:999px;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;white-space:nowrap}
@@ -17,29 +18,17 @@ const CSS = `
 .desk-x{all:unset;cursor:pointer;align-self:flex-start;font:500 12px "Geist Mono",monospace;color:var(--p-muted,#9a9a96);padding:6px 10px;border-radius:999px;border:1px solid var(--p-line,#2a2a2e)}
 .desk-x:hover{color:var(--p-fg,#fff)}
 .desk-x:focus-visible{outline:2px solid var(--p-acc,#fb9890);outline-offset:2px}
-.desk-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.desk-h b{font:600 28px/1 Geist,sans-serif;letter-spacing:-.02em}
-.desk-h span{color:var(--p-muted,#9a9a96);font:500 13px "Geist Mono",monospace}
 .desk-p{margin:0;color:var(--p-muted,#b5b5b0);max-width:64ch}
 .desk-p.big{font-size:18px;color:var(--p-fg,#ededeb)}
-.desk-keys{display:flex;flex-wrap:wrap;gap:6px}
-.desk-keys button{all:unset;cursor:pointer;font:500 12px "Geist Mono",monospace;color:var(--p-fg,#ededeb);background:var(--p-key,#1b1b1d);border:1px solid var(--p-line,#2a2a2e);border-radius:8px;padding:7px 10px;overflow-wrap:anywhere}
-.desk-keys button:hover{border-color:var(--p-acc,#fb9890)}
-.desk-keys button:focus-visible{outline:2px solid var(--p-acc,#fb9890);outline-offset:2px}
 .desk-links{display:flex;flex-wrap:wrap;gap:8px}
 .desk-links a{font:500 12px "Geist Mono",monospace;text-decoration:none;border:1px solid var(--p-line,#2a2a2e);border-radius:999px;padding:6px 11px}
 .desk-links a:hover{border-color:var(--p-acc,#fb9890)}
 .desk-mark{width:min(300px,70%);color:var(--p-fg,#ededeb)}.desk-mark svg{width:100%;height:auto;display:block}
 @media (max-width:720px){.desk-panel{left:0;top:auto;bottom:0;transform:none;width:100%;max-height:82%;border-radius:18px 18px 0 0;box-shadow:0 -20px 40px -10px rgba(0,0,0,.6);animation:none}}
 `;
-const LABEL = { mug: "the mug · about", window: "the sea · northern Portugal, now" };
-const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-const lisbon = () => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
-const lisbonH = () => { const [h, m] = lisbon().split(":").map(Number); return h + m / 60; };
-// the room is built at 2.5 voxels per scene unit, the density the captain chose
-const RES = 2.5;
+const LABEL = { mug: "the mug · about" };
 
-export function startDesk({ stage, light = "golden", backdrop = null, cap = "back", onOpenChange }) {
+export function startDesk({ stage, backdrop = "white", cap = "back", onOpenChange }) {
   if (!document.getElementById("desk-css")) { const st = document.createElement("style"); st.id = "desk-css"; st.textContent = CSS; document.head.append(st); }
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const phone = () => innerWidth < 720;
@@ -53,15 +42,21 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
   // a vertical swipe still scrolls the page on touch; a sideways drag turns the room
   renderer.domElement.style.touchAction = "pan-y";
   const scene = new THREE.Scene();
-  const desk = buildDesk(THREE, { light, shadows: true, res: RES, backdrop, cap });
-  scene.add(desk.root);
+  // the voxels load from the .vox file; until they arrive the stage stays empty
+  let desk = null, targets = [], dead = false;
+  fetch(VOX_URL).then((r) => { if (!r.ok) throw new Error(`jrnxf.vox: ${r.status}`); return r.arrayBuffer(); }).then((buf) => {
+    if (dead) return;
+    desk = buildDesk(THREE, buf, { shadows: true, backdrop, cap });
+    targets = Object.values(desk.hit);
+    scene.add(desk.root);
+  }).catch((e) => console.error(e));
 
   // ---------- camera ----------
   const R0 = 108;
   let sph = { r: R0, th: 0.78, ph: 1.12 }, goal = { ...sph };
-  // with no room around it, the camera frames the desk and the sitter alone, a little closer
-  const look = backdrop ? new THREE.Vector3(32.5, 13, 14) : new THREE.Vector3(28.5, 13, 15), lookGoal = look.clone();
-  const fit = backdrop ? 0.8 : 0.98;
+  // the camera frames the desk and the sitter alone
+  const look = new THREE.Vector3(32.5, 13, 14), lookGoal = look.clone();
+  const fit = 0.8;
   const cam = new THREE.PerspectiveCamera(32, 1, 1, 1800);
   const LIM = { ph: [0.9, 1.42] };
   function resize() {
@@ -70,7 +65,7 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
     renderer.setSize(w, h, false);
     cam.aspect = w / h;
     // a tall screen backs the camera off so the whole desk fits, and looks a little higher
-    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? (backdrop ? 15 : 19) : 13; }
+    if (!openName) { goal.r = sph.r = w / h < 1 ? Math.min(250, (R0 * fit) / (w / h)) : R0; lookGoal.y = look.y = w / h < 1 ? 15 : 13; }
     cam.updateProjectionMatrix();
   }
   const ro = new ResizeObserver(resize);
@@ -78,7 +73,6 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
 
   // ---------- input ----------
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  const targets = Object.values(desk.hit);
   const tip = document.createElement("div"); tip.className = "desk-tip"; stage.append(tip);
   let drag = null, lastMove = performance.now();
   const pick = (e) => { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, cam); const h = ray.intersectObjects(targets)[0]; return h ? h.object.userData.name : null; };
@@ -98,7 +92,7 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
   el.addEventListener("pointercancel", () => (drag = null));
   el.addEventListener("pointerleave", () => setHover(null));
   function setHover(n, e) {
-    desk.highlight(n && !openName ? n : null);
+    desk?.highlight(n && !openName ? n : null);
     el.style.cursor = n ? "pointer" : "grab";
     if (n && e && !openName) { const b = stage.getBoundingClientRect(); tip.textContent = LABEL[n]; tip.style.left = `${e.clientX - b.left + 14}px`; tip.style.top = `${e.clientY - b.top + 14}px`; tip.classList.add("on"); }
     else tip.classList.remove("on");
@@ -113,21 +107,13 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
     if (openName === name) return;
     openName = name; setHover(null); onOpenChange?.(true);
     const top = `<div class="desk-top"><button class="desk-x" aria-label="Back to the desk">← back to the desk</button></div>`;
-    if (name === "mug") {
-      panel.innerHTML = `${top}<div class="desk-mark">${markSVG()}</div><p class="desk-p big">Hi, I'm Colby. I build small, sharp tools for the terminal and the Mac, from a beach in northern Portugal.</p>
-        <div class="desk-links"><a href="mailto:colby@jrnxf.co">colby@jrnxf.co</a><a href="https://github.com/jrnxf" target="_blank" rel="noopener">github</a><a href="https://instagram.com/jrn.xf" target="_blank" rel="noopener">instagram</a><a href="https://www.youtube.com/@jrnxf" target="_blank" rel="noopener">youtube</a><a href="https://twitter.com/jrn_xf" target="_blank" rel="noopener">twitter</a></div>`;
-    } else if (name === "window") {
-      const now = lightForHour(lisbonH());
-      panel.innerHTML = `${top}<div class="desk-h"><b>${lisbon()}</b><span>on this coast right now</span></div><p class="desk-p">The window looks west over the Atlantic. Change the light:</p>
-        <div class="desk-keys">${["golden", "day", "night"].map((k) => `<button data-l="${k}">${k}${k === now ? " · now" : ""}</button>`).join("")}</div>`;
-      panel.querySelectorAll("[data-l]").forEach((b) => b.addEventListener("click", () => setLight(b.dataset.l)));
-    }
+    panel.innerHTML = `${top}<div class="desk-mark">${markSVG()}</div><p class="desk-p big">Hi, I'm Colby. I build small, sharp tools for the terminal and the Mac, from a beach in northern Portugal.</p>
+      <div class="desk-links"><a href="mailto:colby@jrnxf.co">colby@jrnxf.co</a><a href="https://github.com/jrnxf" target="_blank" rel="noopener">github</a><a href="https://instagram.com/jrn.xf" target="_blank" rel="noopener">instagram</a><a href="https://www.youtube.com/@jrnxf" target="_blank" rel="noopener">youtube</a><a href="https://twitter.com/jrn_xf" target="_blank" rel="noopener">twitter</a></div>`;
     panel.classList.add("on");
     panel.querySelector(".desk-x").onclick = close;
     panel.querySelector(".desk-x").focus({ preventScroll: true });
   }
   function close() { openName = null; panel.classList.remove("on"); panel.innerHTML = ""; onOpenChange?.(false); }
-  function setLight(name) { desk.setLight(name); }
 
   // ---------- loop ----------
   // the room only renders while it is on screen, so scrolling past it costs nothing
@@ -142,7 +128,7 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
     sph.r = ease(sph.r, goal.r, 0.01); sph.th = ease(sph.th, goal.th, 0.0004); sph.ph = ease(sph.ph, goal.ph, 0.0004);
     look.lerp(lookGoal, k);
     place();
-    desk.viewFrom(cam.position); desk.update(now, reduced);
+    desk?.update(now, reduced);
     renderer.render(scene, cam);
     raf = requestAnimationFrame(frame);
   }
@@ -150,13 +136,14 @@ export function startDesk({ stage, light = "golden", backdrop = null, cap = "bac
   place(); raf = requestAnimationFrame(frame);
 
   function destroy() {
-    cancelAnimationFrame(raf); raf = 0; visible = false;
+    cancelAnimationFrame(raf); raf = 0; visible = false; dead = true;
     ro.disconnect(); io.disconnect();
     removeEventListener("keydown", onKey);
-    desk.root.traverse((o) => { o.geometry?.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose(); m.dispose(); }); });
+    desk?.root.traverse((o) => { o.geometry?.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose(); m.dispose(); }); });
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); tip.remove(); panel.remove();
   }
-  return { open, close, setLight, setCap: (dir) => desk.setCap(dir), destroy };
+  // a cap turned before the voxels arrive is worn that way when they do
+  return { open, close, setCap: (dir) => { cap = dir; desk?.setCap(dir); }, destroy };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));
