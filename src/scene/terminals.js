@@ -1,5 +1,3 @@
-import { MARK } from "./mark.js";
-
 // The monitor's screen: a few terminal windows at work. Every so often one closes and another opens
 // somewhere else, running something else. Nothing on it is a real product; it is just a busy desk.
 
@@ -122,42 +120,65 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
-// ---- wallpapers: TEMPORARY set of options to choose from, each drawn once on a canvas and kept ----
-const bands = (x, list) => list.forEach(([y0, y1, c]) => { x.fillStyle = c; x.fillRect(0, y0, W, y1 - y0); });
-const lin = (x, stops, x1 = 0, y1 = H) => { const g = x.createLinearGradient(0, 0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; };
-const glow = (x, cx, cy, r, c) => { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, c); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, W, H); };
+// ---- wallpapers: TEMPORARY set of line-based options to choose from, each drawn once on a canvas and kept ----
+const ink = (x, bg, line, width = 1) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); x.strokeStyle = line; x.lineWidth = width; x.beginPath(); };
+const grid = (x, step, ox = 0, oy = 0) => {
+  for (let i = ox % step; i <= W; i += step) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
+  for (let j = oy % step; j <= H; j += step) { x.moveTo(0, j + .5); x.lineTo(W, j + .5); }
+};
 
 export const WALLPAPERS = [
-  { name: "charcoal", draw(x) { x.fillStyle = "#1c1c1e"; x.fillRect(0, 0, W, H); } },
-  { name: "vertical fade", draw(x) { x.fillStyle = lin(x, [[0, "#26282c"], [1, "#101113"]], 0, H); x.fillRect(0, 0, W, H); } },
-  { name: "aurora", draw(x) {
-    x.fillStyle = "#101216"; x.fillRect(0, 0, W, H);
-    glow(x, 170, 120, 260, "rgba(72,170,150,.38)"); glow(x, 470, 90, 240, "rgba(120,96,200,.32)"); glow(x, 330, 300, 280, "rgba(60,120,190,.22)");
-  } },
-  { name: "grid", draw(x) {
-    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(228,228,228,.07)"; x.lineWidth = 1; x.beginPath();
-    for (let i = 0; i <= W; i += 32) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
-    for (let j = 0; j <= H; j += 32) { x.moveTo(0, j + .5); x.lineTo(W, j + .5); }
-    x.stroke();
-  } },
-  { name: "sunset", draw(x) { x.fillStyle = lin(x, [[0, "#1b1722"], [.45, "#4a2a3a"], [.75, "#a8553c"], [1, "#d8884a"]], 0, H); x.fillRect(0, 0, W, H); } },
-  { name: "coast", draw(x) {
-    // flat bands: dusk sky over a calm sea, a low sun and its stripes on the water
-    bands(x, [[0, 150, "#27304a"], [150, 190, "#3b4466"], [190, 215, "#7a5a72"], [215, 232, "#c98a6a"], [232, 262, "#2d4a5e"], [262, 300, "#243e51"], [300, 335, "#1d3343"], [335, H, "#162a37"]]);
-    x.fillStyle = "#e9b27a"; x.beginPath(); x.arc(430, 232, 26, Math.PI, 0); x.fill();
-    x.fillStyle = "rgba(233,178,122,.55)"; [[243, 56], [252, 40], [262, 26]].forEach(([y, w]) => x.fillRect(430 - w, y, w * 2, 4));
-  } },
-  { name: "mark", draw(x) {
-    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H);
-    const [vx, vy, vw, vh] = MARK.regular.vb.split(" ").map(Number), s = 150 / vw;
-    x.save(); x.translate(W / 2 - (vw * s) / 2 - vx * s, H / 2 - (vh * s) / 2 - vy * s); x.scale(s, s); x.fillStyle = "rgba(228,228,228,.16)"; x.fill(new Path2D(MARK.regular.d), "evenodd"); x.restore();
-  } },
+  { name: "grid", draw(x) { ink(x, "#17181b", "rgba(228,228,228,.07)"); grid(x, 32); x.stroke(); } },
   { name: "topo", draw(x) {
-    x.fillStyle = "#16181a"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(136,192,208,.14)"; x.lineWidth = 1;
+    ink(x, "#16181a", "rgba(136,192,208,.14)");
+    x.stroke();
     for (const [cx, cy, n, gap] of [[200, 170, 11, 17], [500, 250, 9, 15]]) for (let k = 1; k <= n; k++) {
       x.beginPath();
       for (let a = 0; a <= 64; a++) { const t = (a / 64) * Math.PI * 2, r = k * gap * (1 + .16 * Math.sin(3 * t + k * .35) + .09 * Math.sin(5 * t - k * .2)); x[a ? "lineTo" : "moveTo"](cx + r * 1.35 * Math.cos(t), cy + r * Math.sin(t)); }
       x.closePath(); x.stroke();
+    }
+  } },
+  { name: "dot grid", draw(x) {
+    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H); x.fillStyle = "rgba(228,228,228,.2)";
+    for (let i = 16; i < W; i += 24) for (let j = 12; j < H; j += 24) x.fillRect(i - 1, j - 1, 2, 2);
+  } },
+  { name: "isometric", draw(x) {
+    // three families of lines at 90, 30 and 150 degrees make the isometric lattice
+    ink(x, "#16181b", "rgba(228,228,228,.07)"); const dx = 28, rise = W * Math.tan(Math.PI / 6), sp = dx / Math.cos(Math.PI / 6);
+    for (let i = 0; i <= W; i += dx) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
+    for (let c = -rise; c < H + rise; c += sp) { x.moveTo(0, c); x.lineTo(W, c + rise); x.moveTo(0, c + rise); x.lineTo(W, c); }
+    x.stroke();
+  } },
+  { name: "blueprint", draw(x) {
+    ink(x, "#14293f", "rgba(170,210,255,.10)"); grid(x, 16); x.stroke();
+    x.strokeStyle = "rgba(170,210,255,.22)"; x.beginPath(); grid(x, 80, 0, 0); x.stroke();
+    x.strokeStyle = "rgba(170,210,255,.3)"; x.lineWidth = 1.25; x.strokeRect(14.5, 14.5, W - 29, H - 29);
+  } },
+  { name: "graph paper", draw(x) {
+    ink(x, "#1a1c1a", "rgba(143,210,150,.06)"); grid(x, 10); x.stroke();
+    x.strokeStyle = "rgba(143,210,150,.16)"; x.beginPath(); grid(x, 50); x.stroke();
+  } },
+  { name: "halftone lines", draw(x) {
+    // horizontal lines that swell and thin along a slow wave, like a halftone screen
+    x.fillStyle = "#16171a"; x.fillRect(0, 0, W, H); x.fillStyle = "rgba(228,228,228,.16)";
+    for (let j = 8; j < H; j += 10) for (let i = 0; i < W; i += 2) { const k = .5 + .5 * Math.sin(i / 46 + j / 70), t = 0.4 + 2.4 * k * (.5 + .5 * Math.cos(j / 60 - i / 120)); x.fillRect(i, j - t / 2, 2, t); }
+  } },
+  { name: "hex grid", draw(x) {
+    ink(x, "#17181b", "rgba(228,228,228,.08)"); const r = 22, h = r * Math.sqrt(3);
+    for (let row = -1; row * h * .5 < H + h; row++) for (let col = -1; col * r * 1.5 < W + r * 2; col++) {
+      const cx = col * r * 1.5, cy = row * h + (col % 2 ? h / 2 : 0);
+      for (let k = 0; k < 6; k++) { const a = (Math.PI / 3) * k; x[k ? "lineTo" : "moveTo"](cx + r * Math.cos(a), cy + r * Math.sin(a)); }
+      x.closePath();
+    }
+    x.stroke();
+  } },
+  { name: "contour waves", draw(x) {
+    // stacked contour lines along a rolling surface
+    ink(x, "#15171a", "rgba(130,210,206,.16)");
+    for (let k = 0; k < 28; k++) {
+      x.beginPath();
+      for (let i = 0; i <= W; i += 4) { const y = 30 + k * 11 + 16 * Math.sin(i / 70 + k * .22) + 10 * Math.sin(i / 31 - k * .35); x[i ? "lineTo" : "moveTo"](i, y); }
+      x.stroke();
     }
   } },
 ];
