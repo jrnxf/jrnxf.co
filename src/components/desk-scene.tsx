@@ -3,32 +3,23 @@ import type React from "react";
 import type { DeskHandle } from "@/scene/deskapp.js";
 import { markSVG } from "@/scene/mark.js";
 import { cn } from "@/lib/utils";
-import { ABOUT_LINKS, INFO, LinkPills, PROJECTS, ShellSection, WindowsSection, pill } from "@/components/projects";
+import { ABOUT_LINKS, LinkPills, PROJECTS, pill } from "@/components/projects";
 
 const MARK = markSVG();
 
-// TEMPORARY: four interactive mock-ups of the projects section, switched with a small "<  name  >" control
-// at the top right so a favourite can be picked live. Set to false (and keep one variant, deleting the
-// rest of the VARIANTS code below) once one is chosen.
-const SHOW_VARIANT_SWITCHER = true;
-const VARIANTS = ["monitor", "shell", "story", "windows"] as const;
-type Variant = (typeof VARIANTS)[number];
+// TEMPORARY: three ways to show the projects beside the monitor, switched with a small "<  name  >" control
+// at the top right so a favourite can be picked live. Set to false (and keep one option, deleting the rest
+// of the OPTIONS code below) once one is chosen.
+const SHOW_OPTION_SWITCHER = true;
+const OPTIONS = ["index", "note", "strip"] as const;
+type Option = (typeof OPTIONS)[number];
 
-// where the camera goes for a project: the monitor close-up (monitor variant), or the desk object each
-// project is tied to (story variant). th / ph / r are the orbit angles and distance, look the point looked at.
-type Pose = { th: number; ph: number; r: number; look: [number, number, number] };
-const MONITOR_POSE: Pose = { th: 0.75, ph: 1.1, r: 46, look: [40, 20, 6] };
-const STORY: { object: string; pose: Pose }[] = [
-  { object: "the keyboard", pose: { th: 0.7, ph: 1.1, r: 30, look: [32, 14, 10] } }, // thokr
-  { object: "the clock", pose: { th: 0.5, ph: 1.2, r: 26, look: [43, 16.5, 8] } }, // drip
-  { object: "the mug", pose: { th: 0.9, ph: 1.15, r: 20, look: [41, 15.5, 11] } }, // okfs
-  { object: "the plant", pose: { th: -0.7, ph: 1.15, r: 26, look: [20, 16, 10] } }, // une.haus
-  { object: "the monitor", pose: MONITOR_POSE }, // fsrx, whose clip plays on the screen
-  { object: "the whole desk", pose: { th: 0.3, ph: 1.1, r: 70, look: [32.5, 13, 14] } }, // vxr, which made it
-];
-const STEP = 0.8; // dvh of scrolling per story step
+// the camera for the projects view: over his right shoulder, a little above his head, looking at the
+// monitor from about 20 degrees off its axis so the screen reads nearly face-on, and large in frame
+const PROJECTS_POSE = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
+const WHEEL_STEP = 50; // wheel delta that moves to the next project
+const WHEEL_PAUSE = 450; // ms before the wheel can move it again
 
-// the panel the page opens, in the same warm off-white as the void
 const PANEL_COLORS = {
   "--p-bg": "#f6f2ec",
   "--p-fg": "#2a2622",
@@ -36,7 +27,10 @@ const PANEL_COLORS = {
   "--p-line": "#ddd5ca",
 } as React.CSSProperties;
 
-// a project on the 3D monitor: its clip plays in an off-screen video the scene copies frames from
+const serif = "font-['Fraunces',serif] font-light";
+const muted = "text-[rgba(42,38,34,0.55)]";
+
+// the project on the 3D monitor: its clip plays in an off-screen video the scene copies frames from
 function useMonitorScreen(deskRef: React.MutableRefObject<DeskHandle | null>, ready: boolean, index: number | null) {
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -58,35 +52,129 @@ function useMonitorScreen(deskRef: React.MutableRefObject<DeskHandle | null>, re
     }
     desk.setScreen({ name: project.name, video: project.clip ? v : null });
   }, [deskRef, ready, index]);
+  return <video ref={video} muted loop playsInline preload="auto" aria-hidden="true" className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0" />;
+}
+
+// ------------------------------------------------------------------------------------------------
+// the three displays; each gets the picked project and a way to move, and is placed by its own classes
+// ------------------------------------------------------------------------------------------------
+
+type Nav = { index: number; go: (to: number) => void; close: () => void };
+
+// index: a quiet vertical table of contents down the right edge; the picked project opens to its blurb and links
+function IndexDisplay({ index, go, close }: Nav) {
   return (
-    <video ref={video} muted loop playsInline preload="auto" aria-hidden="true" className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0" />
+    <nav
+      aria-label="Projects"
+      className="absolute z-[4] flex flex-col gap-1 max-sm:inset-x-[max(14px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
+    >
+      <ol className="flex flex-col">
+        {PROJECTS.map((p, i) => (
+          <li key={p.name} className={cn("border-t border-[rgba(42,38,34,0.12)] last:border-b", i !== index && "max-sm:hidden")}>
+            <button
+              type="button"
+              aria-current={i === index}
+              onClick={() => go(i)}
+              className="flex w-full cursor-pointer items-baseline gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890]"
+            >
+              <span className={cn("w-5 tabular-nums", muted)}>{String(i + 1).padStart(2, "0")}</span>
+              <span className={cn("transition-colors", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.55)] hover:text-[#2a2622]")}>{p.name}</span>
+            </button>
+            {i === index && (
+              <div className="flex flex-col gap-3 pb-4 pl-8">
+                <p className={cn(serif, "text-[17px] leading-snug text-[rgba(42,38,34,0.88)]")}>{p.blurb}</p>
+                <LinkPills links={p.links} />
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+      <button type="button" onClick={close} className={cn(pill, "mt-3 self-start")}>
+        back to the desk
+      </button>
+    </nav>
   );
 }
 
-function Caption({ index, className, children }: { index: number; className?: string; children?: React.ReactNode }) {
-  const project = PROJECTS[index];
+// note: one index card, as if pinned beside the monitor, tipped a few degrees, turned over with its arrows
+function NoteDisplay({ index, go, close }: Nav) {
+  const p = PROJECTS[index];
   return (
-    <div className={cn("flex flex-col gap-3 rounded-2xl border border-[rgba(42,38,34,0.14)] bg-[#f6f2ec] p-4 shadow-[0_18px_40px_-18px_rgba(42,38,34,0.35)]", className)}>
-      <h3 className="font-mono text-sm font-medium">{project.name}</h3>
-      <p className="font-['Fraunces',serif] text-[17px] font-light leading-snug text-[rgba(42,38,34,0.88)]">{project.blurb}</p>
-      <LinkPills links={project.links} />
-      {children}
+    <div className="absolute z-[4] flex flex-col items-end gap-3 max-sm:inset-x-[max(14px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:right-[max(32px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(300px,28vw)] sm:-translate-y-1/2">
+      <article
+        key={p.name}
+        className="relative w-full rotate-[1.2deg] bg-[#fbf7ee] px-5 pb-5 pt-7 shadow-[0_1px_0_rgba(42,38,34,0.06),0_16px_30px_-14px_rgba(42,38,34,0.4)]"
+        style={{ backgroundImage: "repeating-linear-gradient(transparent 0 27px, rgba(131,160,190,0.22) 27px 28px)", backgroundPosition: "0 52px" }}
+      >
+        <span aria-hidden="true" className="absolute left-1/2 top-2.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[#fc6b83] shadow-[0_2px_3px_rgba(42,38,34,0.35)]" />
+        <p className={cn("font-mono text-[11px]", muted)}>
+          {String(index + 1).padStart(2, "0")} / {String(PROJECTS.length).padStart(2, "0")}
+        </p>
+        <h3 className="mt-1 font-mono text-sm font-medium">{p.name}</h3>
+        <p className={cn(serif, "mt-2 text-[17px] leading-[28px] text-[rgba(42,38,34,0.88)]")}>{p.blurb}</p>
+        <LinkPills links={p.links} className="mt-3" />
+      </article>
+      <div className="flex items-center gap-2">
+        <button type="button" aria-label="Previous project" onClick={() => go(index - 1)} className={cn(pill, "px-3.5")}>
+          ←
+        </button>
+        <button type="button" aria-label="Next project" onClick={() => go(index + 1)} className={cn(pill, "px-3.5")}>
+          →
+        </button>
+        <button type="button" onClick={close} className={pill}>
+          back to the desk
+        </button>
+      </div>
     </div>
   );
 }
 
-// The homepage hero: me at my desk in a soft white void, terminals on the screen. The scene is
-// drawn by three.js, which only loads in the browser, so the server renders the words around it.
+// strip: a thin numbered list along the bottom edge with progress dots, the blurb above it, and arrow keys
+function StripDisplay({ index, go, close }: Nav) {
+  const p = PROJECTS[index];
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-[4] flex flex-col gap-3 bg-gradient-to-t from-[#ebe6de] via-[rgba(235,230,222,0.9)] to-transparent px-[max(16px,env(safe-area-inset-left))] pb-[max(14px,env(safe-area-inset-bottom))] pt-14">
+      <div key={p.name} className="mx-auto flex w-full max-w-3xl flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+        <p className={cn(serif, "max-w-[44ch] text-[17px] leading-snug text-[rgba(42,38,34,0.9)]")}>{p.blurb}</p>
+        <LinkPills links={p.links} className="sm:justify-end" />
+      </div>
+      <nav aria-label="Projects" className="mx-auto flex w-full max-w-3xl items-center gap-4 border-t border-[rgba(42,38,34,0.14)] pt-2.5 font-mono text-xs">
+        <ol className="flex min-w-0 flex-1 items-center gap-x-4 overflow-x-auto max-sm:gap-x-3">
+          {PROJECTS.map((q, i) => (
+            <li key={q.name} className="shrink-0">
+              <button
+                type="button"
+                aria-current={i === index}
+                onClick={() => go(i)}
+                className={cn("flex cursor-pointer items-center gap-1.5 py-1 transition-colors focus-visible:outline-2 focus-visible:outline-[#fb9890]", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.5)] hover:text-[#2a2622]")}
+              >
+                <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", i === index ? "bg-[#2a2622]" : i < index ? "bg-[rgba(42,38,34,0.4)]" : "border border-[rgba(42,38,34,0.35)]")} />
+                <span className="max-sm:hidden">{String(i + 1).padStart(2, "0")}</span>
+                <span className={cn(i !== index && "max-sm:hidden")}>{q.name}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <span className={cn("hidden shrink-0 sm:inline", muted)}>← → keys</span>
+        <button type="button" onClick={close} className="shrink-0 cursor-pointer text-[rgba(42,38,34,0.6)] underline decoration-[rgba(42,38,34,0.25)] underline-offset-4 hover:text-[#2a2622]">
+          close
+        </button>
+      </nav>
+    </div>
+  );
+}
+
+// The homepage hero: me at my desk in a soft white void, terminals on the screen; "projects" leans in on the
+// monitor and shows what is on it. The scene is drawn by three.js, which only loads in the browser, so the
+// server renders the words around it.
 export function DeskScene() {
   const stageRef = useRef<HTMLDivElement>(null);
   const deskRef = useRef<DeskHandle | null>(null);
-  const workRef = useRef<HTMLElement>(null);
   const [ready, setReady] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [phone, setPhone] = useState(false);
-  const [variant, setVariant] = useState<Variant>(VARIANTS[0]);
-  const [picked, setPicked] = useState<number | null>(null); // monitor variant: the project on the monitor
-  const [step, setStep] = useState(-1); // story variant: the step the scroll is on, -1 before the first
+  const [option, setOption] = useState<Option>(OPTIONS[0]);
+  const [picked, setPicked] = useState<number | null>(null); // the project on the monitor, or null for the desk
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -114,188 +202,114 @@ export function DeskScene() {
     };
   }, []);
 
-  // changing variant starts clean: the opening view, the terminals on the monitor, the page at the top
+  const inProjects = picked !== null;
+  const go = (to: number) => setPicked((cur) => (cur === null ? cur : Math.max(0, Math.min(PROJECTS.length - 1, to))));
+  const close = () => setPicked(null);
+
+  // the camera leans in on the monitor while a project is picked, and the scene stops taking drags and zoom
   useEffect(() => {
-    setPicked(null);
-    setStep(-1);
-    window.scrollTo(0, 0);
     const desk = deskRef.current;
     if (!desk) return;
-    desk.flyTo();
-    desk.setLocked(variant === "story");
-  }, [variant, ready]);
+    if (inProjects) desk.flyTo(PROJECTS_POSE);
+    else desk.flyTo();
+    desk.setLocked(inProjects);
+  }, [inProjects, ready]);
 
-  // monitor variant: the camera leans in on the monitor while a project is picked
+  // the wheel and the arrow keys step through the projects while the monitor is up
   useEffect(() => {
-    if (variant !== "monitor") return;
-    if (picked === null) deskRef.current?.flyTo();
-    else deskRef.current?.flyTo(MONITOR_POSE);
-  }, [variant, picked, ready]);
-
-  // story variant: the scroll position picks the step, and each step flies to its object
-  useEffect(() => {
-    if (variant !== "story") return;
-    const onScroll = () => {
-      const next = Math.min(STORY.length - 1, Math.floor(window.scrollY / (STEP * innerHeight) + 0.35) - 1);
-      setStep((cur) => (cur === next ? cur : next));
+    if (!inProjects) return;
+    let acc = 0, until = 0;
+    const onWheel = (e: WheelEvent) => {
+      const now = performance.now();
+      if (now < until) return;
+      acc += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      if (Math.abs(acc) < WHEEL_STEP) return;
+      go(Math.sign(acc) + (pickedRef.current ?? 0));
+      acc = 0;
+      until = now + WHEEL_PAUSE;
     };
-    onScroll();
-    addEventListener("scroll", onScroll, { passive: true });
-    return () => removeEventListener("scroll", onScroll);
-  }, [variant]);
-  useEffect(() => {
-    if (variant !== "story") return;
-    if (step < 0) deskRef.current?.flyTo();
-    else deskRef.current?.flyTo(STORY[step].pose);
-  }, [variant, step, ready]);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const cur = pickedRef.current ?? 0;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") go(cur + 1);
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") go(cur - 1);
+      else if (e.key === "Escape") close();
+      else return;
+      e.preventDefault();
+    };
+    addEventListener("wheel", onWheel, { passive: true });
+    addEventListener("keydown", onKey);
+    return () => {
+      removeEventListener("wheel", onWheel);
+      removeEventListener("keydown", onKey);
+    };
+  }, [inProjects]);
+  const pickedRef = useRef<number | null>(null);
+  pickedRef.current = picked;
 
-  const screenIndex = variant === "monitor" ? picked : variant === "story" && step >= 0 && STORY[step].object === "the monitor" ? step : null;
-  const hiddenVideo = useMonitorScreen(deskRef, ready, screenIndex);
-
+  const hiddenVideo = useMonitorScreen(deskRef, ready, picked);
   const chrome = cn("transition-opacity", panelOpen && "pointer-events-none opacity-0");
-  const stepBy = (by: number) => setVariant((v) => VARIANTS[(VARIANTS.indexOf(v) + by + VARIANTS.length) % VARIANTS.length]);
-  const lean = variant === "monitor" && picked !== null;
-  const inStory = variant === "story";
-  const below = variant === "shell" || variant === "windows";
-  const storyProject = inStory && step >= 0 ? Math.min(step, PROJECTS.length - 1) : null;
+  const stepOption = (by: number) => setOption((o) => OPTIONS[(OPTIONS.indexOf(o) + by + OPTIONS.length) % OPTIONS.length]);
+  const nav: Nav = { index: picked ?? 0, go, close };
 
   return (
-    <>
+    <section
+      aria-label="Colby at a desk, in voxels"
+      className="relative z-10 h-dvh overflow-hidden bg-[#ebe6de] font-['Geist',system-ui,sans-serif] text-[#2a2622]"
+      style={PANEL_COLORS}
+    >
       {hiddenVideo}
-      <div style={inStory ? { height: `${(STORY.length + 1.4) * STEP * 100}dvh` } : undefined} className="relative">
-        <section
-          aria-label="Colby at a desk, in voxels"
-          className={cn("relative z-10 h-dvh overflow-hidden bg-[#ebe6de] font-['Geist',system-ui,sans-serif] text-[#2a2622]", inStory && "sticky top-0")}
-          style={PANEL_COLORS}
-        >
-          <div ref={stageRef} className="desk-stage absolute inset-0 [&>canvas]:block [&>canvas]:h-full [&>canvas]:w-full" />
-          <div
-            className={cn(
-              "pointer-events-none absolute left-[max(16px,env(safe-area-inset-left))] top-[max(16px,env(safe-area-inset-top))] z-[3] max-w-[min(420px,calc(100vw-32px))] transition-opacity",
-              (panelOpen || lean || (inStory && step >= 0)) && "opacity-0",
-            )}
-          >
-            <div
-              className="w-[110px] sm:w-[150px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-              dangerouslySetInnerHTML={{ __html: MARK }}
-            />
-            <p className="mt-2.5 font-['Fraunces',serif] text-base font-light leading-[1.35] text-[rgba(42,38,34,0.9)] sm:text-[clamp(17px,2vw,21px)]">
-              fast tools, slow mornings
-              <br />
-              vila chã, portugal
-            </p>
-          </div>
-
-          {variant === "monitor" && (
-            <div
-              className={cn(
-                "absolute z-[4] flex gap-2 max-sm:inset-x-[max(12px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] max-sm:flex-col sm:right-[max(20px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(340px,34vw)] sm:-translate-y-1/2 sm:flex-col",
-                chrome,
-              )}
-            >
-              {picked !== null && (
-                <Caption index={picked}>
-                  <button type="button" onClick={() => setPicked(null)} className={cn(pill, "self-start")}>
-                    back to the desk
-                  </button>
-                </Caption>
-              )}
-              <ul className="flex flex-wrap gap-2 sm:justify-end">
-                {PROJECTS.map((p, i) => (
-                  <li key={p.name}>
-                    <button
-                      type="button"
-                      aria-pressed={picked === i}
-                      onClick={() => setPicked(picked === i ? null : i)}
-                      className={cn(pill, "bg-[rgba(246,242,236,0.7)]", picked === i && "border-[rgba(42,38,34,0.55)] text-[#2a2622]")}
-                    >
-                      {p.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {inStory && (
-            <>
-              <div className={cn("pointer-events-none absolute inset-x-0 bottom-[max(18px,env(safe-area-inset-bottom))] z-[3] text-center font-mono text-[11px] text-[rgba(42,38,34,0.55)] transition-opacity sm:text-xs", step >= 0 && "opacity-0")}>
-                scroll <span aria-hidden="true" className="inline-block motion-safe:animate-bounce">↓</span>
-              </div>
-              {storyProject !== null && (
-                <Caption
-                  index={storyProject}
-                  className="absolute z-[4] max-sm:inset-x-[max(12px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:bottom-10 sm:left-[max(20px,env(safe-area-inset-left))] sm:w-[min(360px,40vw)]"
-                >
-                  <p className="font-mono text-[11px] text-[rgba(42,38,34,0.5)]">
-                    {step + 1} / {STORY.length} · {STORY[step].object}
-                  </p>
-                </Caption>
-              )}
-            </>
-          )}
-
-          {!inStory && !lean && (
-            <>
-              <div
-                className={cn(
-                  "pointer-events-none absolute left-1/2 z-[3] -translate-x-1/2 whitespace-nowrap font-mono text-[11px] font-medium text-[rgba(42,38,34,0.55)] sm:text-xs",
-                  below ? "bottom-[max(60px,calc(env(safe-area-inset-bottom)+42px))]" : "bottom-[max(18px,env(safe-area-inset-bottom))]",
-                  variant === "monitor" && "max-sm:hidden",
-                  chrome,
-                )}
-              >
-                {phone ? "swipe to look · pinch to zoom" : "drag to look · scroll to zoom"}
-              </div>
-              {below && (
-                <button
-                  type="button"
-                  onClick={() => workRef.current?.scrollIntoView({ behavior: "smooth" })}
-                  className={cn(pill, "absolute bottom-[max(14px,env(safe-area-inset-bottom))] left-1/2 z-[3] -translate-x-1/2 border-transparent", chrome)}
-                >
-                  work <span aria-hidden="true" className="inline-block motion-safe:animate-bounce">↓</span>
-                </button>
-              )}
-            </>
-          )}
-
-          {SHOW_VARIANT_SWITCHER && (
-            <div
-              className={cn(
-                "absolute right-[max(14px,env(safe-area-inset-right))] top-[max(14px,env(safe-area-inset-top))] z-[5] flex items-center gap-1.5 font-mono text-[11px] text-[rgba(42,38,34,0.55)]",
-                chrome,
-              )}
-            >
-              {([-1, 1] as const).map((by) => (
-                <button key={by} type="button" aria-label={by < 0 ? "Previous variant" : "Next variant"} onClick={() => stepBy(by)} className={cn(pill, "px-2.5 py-1 text-[11px]")}>
-                  {by < 0 ? "<" : ">"}
-                </button>
-              ))}
-              <span className="min-w-[8ch]">{variant}</span>
-            </div>
-          )}
-        </section>
+      <div ref={stageRef} className="desk-stage absolute inset-0 [&>canvas]:block [&>canvas]:h-full [&>canvas]:w-full" />
+      <div
+        className={cn(
+          "pointer-events-none absolute left-[max(16px,env(safe-area-inset-left))] top-[max(16px,env(safe-area-inset-top))] z-[3] max-w-[min(420px,calc(100vw-32px))] transition-opacity",
+          (panelOpen || inProjects) && "opacity-0",
+        )}
+      >
+        <div className="w-[110px] sm:w-[150px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: MARK }} />
+        <p className="mt-2.5 font-['Fraunces',serif] text-base font-light leading-[1.35] text-[rgba(42,38,34,0.9)] sm:text-[clamp(17px,2vw,21px)]">
+          fast tools, slow mornings
+          <br />
+          vila chã, portugal
+        </p>
       </div>
 
-      {below && (
-        <section
-          ref={workRef}
-          id="work"
-          aria-label="Projects"
-          className="relative z-10 bg-[#ebe6de] px-[max(16px,env(safe-area-inset-left))] py-16 font-['Geist',system-ui,sans-serif] text-[#2a2622] sm:py-24"
-        >
-          <div className="mx-auto flex max-w-5xl flex-col gap-8">
-            <header className="flex flex-col gap-3">
-              <h2 className="font-mono text-xs uppercase tracking-widest text-[rgba(42,38,34,0.55)]">work</h2>
-              <p className="max-w-[40ch] font-['Fraunces',serif] text-[clamp(20px,3vw,28px)] font-light leading-snug">{INFO}</p>
-            </header>
-            {variant === "shell" ? <ShellSection /> : <WindowsSection />}
-            <footer className="flex flex-col gap-3 border-t border-[rgba(42,38,34,0.12)] pt-6">
-              <LinkPills links={ABOUT_LINKS} />
-            </footer>
+      {!inProjects && (
+        <>
+          <div className={cn("pointer-events-none absolute bottom-[max(60px,calc(env(safe-area-inset-bottom)+42px))] left-1/2 z-[3] -translate-x-1/2 whitespace-nowrap font-mono text-[11px] font-medium sm:text-xs", muted, chrome)}>
+            {phone ? "swipe to look · pinch to zoom" : "drag to look · scroll to zoom"}
           </div>
-        </section>
+          <div className={cn("absolute bottom-[max(14px,env(safe-area-inset-bottom))] left-1/2 z-[3] flex -translate-x-1/2 items-center gap-3", chrome)}>
+            <button type="button" onClick={() => setPicked(0)} className={cn(pill, "border-[rgba(42,38,34,0.3)]")}>
+              projects →
+            </button>
+            <ul className="hidden gap-3 font-mono text-xs sm:flex">
+              {ABOUT_LINKS.slice(0, 2).map((l) => (
+                <li key={l.label}>
+                  <a className="text-[rgba(42,38,34,0.6)] underline decoration-[rgba(42,38,34,0.25)] underline-offset-4 hover:text-[#2a2622]" href={l.href} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}>
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
-    </>
+
+      {inProjects && option === "index" && <IndexDisplay {...nav} />}
+      {inProjects && option === "note" && <NoteDisplay {...nav} />}
+      {inProjects && option === "strip" && <StripDisplay {...nav} />}
+
+      {SHOW_OPTION_SWITCHER && (
+        <div className={cn("absolute right-[max(14px,env(safe-area-inset-right))] top-[max(14px,env(safe-area-inset-top))] z-[5] flex items-center gap-1.5 font-mono text-[11px]", muted, chrome)}>
+          {([-1, 1] as const).map((by) => (
+            <button key={by} type="button" aria-label={by < 0 ? "Previous option" : "Next option"} onClick={() => stepOption(by)} className={cn(pill, "px-2.5 py-1 text-[11px]")}>
+              {by < 0 ? "<" : ">"}
+            </button>
+          ))}
+          <span className="min-w-[6ch]">{option}</span>
+        </div>
+      )}
+    </section>
   );
 }
