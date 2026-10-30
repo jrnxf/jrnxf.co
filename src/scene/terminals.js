@@ -120,67 +120,68 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
-// ---- wallpapers: TEMPORARY set of line-based options to choose from, each drawn once on a canvas and kept ----
-const ink = (x, bg, line, width = 1) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); x.strokeStyle = line; x.lineWidth = width; x.beginPath(); };
-const grid = (x, step, ox = 0, oy = 0) => {
-  for (let i = ox % step; i <= W; i += step) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
-  for (let j = oy % step; j <= H; j += step) { x.moveTo(0, j + .5); x.lineTo(W, j + .5); }
-};
+// ---- wallpapers: TEMPORARY options to choose from, each drawn once on a canvas and kept ----
+
+// ---- realistic topo: contour lines are the iso-lines of one smooth heightfield, traced with marching squares,
+// so they never cross or touch; evenly spaced levels, every fifth one an index contour drawn heavier ----
+function hash2(i, j, seed) { let h = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(seed, 2147483647); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function valueNoise(x, y, seed) {
+  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  const a = hash2(i, j, seed), b = hash2(i + 1, j, seed), c = hash2(i, j + 1, seed), d = hash2(i + 1, j + 1, seed);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, seed, octaves = 4) { let sum = 0, amp = 0.5, f = 1; for (let o = 0; o < octaves; o++) { sum += amp * valueNoise(x * f, y * f, seed + o * 17); amp /= 2; f *= 2; } return sum; }
+
+function contours(x, height, { levels, color, indexColor, cell = 4 }) {
+  const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(H / cell) + 1, hs = new Float32Array(cols * rows);
+  let lo = Infinity, hi = -Infinity;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const v = height(i * cell / W, j * cell / H); hs[j * cols + i] = v; lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  for (let k = 1; k < levels; k++) {
+    const level = lo + ((hi - lo) * k) / levels, index = k % 5 === 0;
+    x.strokeStyle = index ? indexColor : color; x.lineWidth = index ? 1.5 : 0.8; x.beginPath();
+    for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
+      const tl = hs[j * cols + i], tr = hs[j * cols + i + 1], br = hs[(j + 1) * cols + i + 1], bl = hs[(j + 1) * cols + i];
+      const px = i * cell, py = j * cell, at = (a, b) => (level - a) / (b - a);
+      const pts = []; // crossings on the top, right, bottom and left edges, in that order
+      if ((tl > level) !== (tr > level)) pts.push([0, px + at(tl, tr) * cell, py]);
+      if ((tr > level) !== (br > level)) pts.push([1, px + cell, py + at(tr, br) * cell]);
+      if ((bl > level) !== (br > level)) pts.push([2, px + at(bl, br) * cell, py + cell]);
+      if ((tl > level) !== (bl > level)) pts.push([3, px, py + at(tl, bl) * cell]);
+      const seg = (p, q) => { x.moveTo(p[1], p[2]); x.lineTo(q[1], q[2]); };
+      if (pts.length === 2) seg(pts[0], pts[1]);
+      else if (pts.length === 4) {
+        // a saddle: the centre's side decides which corners are joined
+        const centre = (tl + tr + br + bl) / 4 > level;
+        if ((tl > level) === centre) { seg(pts[0], pts[1]); seg(pts[2], pts[3]); } else { seg(pts[0], pts[3]); seg(pts[1], pts[2]); }
+      }
+    }
+    x.stroke();
+  }
+}
+const mapBg = (x, bg) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); };
+const terrain = (name, bg, color, indexColor, levels, height) => ({ name, draw(x) { mapBg(x, bg); contours(x, height, { levels, color, indexColor }); } });
 
 export const WALLPAPERS = [
-  { name: "grid", draw(x) { ink(x, "#17181b", "rgba(228,228,228,.07)"); grid(x, 32); x.stroke(); } },
   { name: "topo", draw(x) {
-    ink(x, "#16181a", "rgba(136,192,208,.14)");
-    x.stroke();
+    x.fillStyle = "#16181a"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(136,192,208,.14)"; x.lineWidth = 1;
     for (const [cx, cy, n, gap] of [[200, 170, 11, 17], [500, 250, 9, 15]]) for (let k = 1; k <= n; k++) {
       x.beginPath();
       for (let a = 0; a <= 64; a++) { const t = (a / 64) * Math.PI * 2, r = k * gap * (1 + .16 * Math.sin(3 * t + k * .35) + .09 * Math.sin(5 * t - k * .2)); x[a ? "lineTo" : "moveTo"](cx + r * 1.35 * Math.cos(t), cy + r * Math.sin(t)); }
       x.closePath(); x.stroke();
     }
   } },
-  { name: "dot grid", draw(x) {
-    x.fillStyle = "#17181b"; x.fillRect(0, 0, W, H); x.fillStyle = "rgba(228,228,228,.2)";
-    for (let i = 16; i < W; i += 24) for (let j = 12; j < H; j += 24) x.fillRect(i - 1, j - 1, 2, 2);
-  } },
-  { name: "isometric", draw(x) {
-    // three families of lines at 90, 30 and 150 degrees make the isometric lattice
-    ink(x, "#16181b", "rgba(228,228,228,.07)"); const dx = 28, rise = W * Math.tan(Math.PI / 6), sp = dx / Math.cos(Math.PI / 6);
-    for (let i = 0; i <= W; i += dx) { x.moveTo(i + .5, 0); x.lineTo(i + .5, H); }
-    for (let c = -rise; c < H + rise; c += sp) { x.moveTo(0, c); x.lineTo(W, c + rise); x.moveTo(0, c + rise); x.lineTo(W, c); }
-    x.stroke();
-  } },
-  { name: "blueprint", draw(x) {
-    ink(x, "#14293f", "rgba(170,210,255,.10)"); grid(x, 16); x.stroke();
-    x.strokeStyle = "rgba(170,210,255,.22)"; x.beginPath(); grid(x, 80, 0, 0); x.stroke();
-    x.strokeStyle = "rgba(170,210,255,.3)"; x.lineWidth = 1.25; x.strokeRect(14.5, 14.5, W - 29, H - 29);
-  } },
-  { name: "graph paper", draw(x) {
-    ink(x, "#1a1c1a", "rgba(143,210,150,.06)"); grid(x, 10); x.stroke();
-    x.strokeStyle = "rgba(143,210,150,.16)"; x.beginPath(); grid(x, 50); x.stroke();
-  } },
-  { name: "halftone lines", draw(x) {
-    // horizontal lines that swell and thin along a slow wave, like a halftone screen
-    x.fillStyle = "#16171a"; x.fillRect(0, 0, W, H); x.fillStyle = "rgba(228,228,228,.16)";
-    for (let j = 8; j < H; j += 10) for (let i = 0; i < W; i += 2) { const k = .5 + .5 * Math.sin(i / 46 + j / 70), t = 0.4 + 2.4 * k * (.5 + .5 * Math.cos(j / 60 - i / 120)); x.fillRect(i, j - t / 2, 2, t); }
-  } },
-  { name: "hex grid", draw(x) {
-    ink(x, "#17181b", "rgba(228,228,228,.08)"); const r = 22, h = r * Math.sqrt(3);
-    for (let row = -1; row * h * .5 < H + h; row++) for (let col = -1; col * r * 1.5 < W + r * 2; col++) {
-      const cx = col * r * 1.5, cy = row * h + (col % 2 ? h / 2 : 0);
-      for (let k = 0; k < 6; k++) { const a = (Math.PI / 3) * k; x[k ? "lineTo" : "moveTo"](cx + r * Math.cos(a), cy + r * Math.sin(a)); }
-      x.closePath();
-    }
-    x.stroke();
-  } },
-  { name: "contour waves", draw(x) {
-    // stacked contour lines along a rolling surface
-    ink(x, "#15171a", "rgba(130,210,206,.16)");
-    for (let k = 0; k < 28; k++) {
-      x.beginPath();
-      for (let i = 0; i <= W; i += 4) { const y = 30 + k * 11 + 16 * Math.sin(i / 70 + k * .22) + 10 * Math.sin(i / 31 - k * .35); x[i ? "lineTo" : "moveTo"](i, y); }
-      x.stroke();
-    }
-  } },
+  // a ridge with a valley either side: the crest of a folded noise, tilted across the map
+  terrain("topo ridge", "#15181a", "rgba(212,148,62,.2)", "rgba(212,148,62,.42)", 40, (u, v) => {
+    const warp = fbm(u * 2.2, v * 2.2, 3) * 0.5;
+    return 1 - Math.abs(fbm(u * 2.4 + warp, v * 2.4 - warp, 11, 3) * 2 - 1) * 0.9 + 0.35 * (1 - u) + 0.15 * v;
+  }),
+  // one peak, steep in the middle and flattening out, with rough ground around it
+  terrain("topo peak", "#14181a", "rgba(130,210,206,.2)", "rgba(130,210,206,.42)", 36, (u, v) => {
+    const dx = (u - 0.52) * 1.78, dy = v - 0.5;
+    return Math.exp(-(dx * dx + dy * dy) * 7) * 1.6 + 0.35 * fbm(u * 5, v * 5, 23);
+  }),
+  // low rolling hills: a few wide swells with no single summit
+  terrain("topo hills", "#161815", "rgba(163,204,124,.2)", "rgba(163,204,124,.4)", 32, (u, v) => fbm(u * 3.1, v * 3.1, 5, 3)),
 ];
 const drawn = [];
 let wallpaperAt = 0;
