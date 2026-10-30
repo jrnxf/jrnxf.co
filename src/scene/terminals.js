@@ -159,7 +159,9 @@ function contours(x, height, { levels, color, indexColor, cell = 4 }) {
   }
 }
 const mapBg = (x, bg) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); };
-const terrain = (name, bg, color, indexColor, levels, height) => ({ name, draw(x) { mapBg(x, bg); contours(x, height, { levels, color, indexColor }); } });
+// every terrain uses the original topo's colours: its background and its line colour (index lines are only heavier)
+const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
+const terrain = (name, levels, height) => ({ name, draw(x) { mapBg(x, TOPO_BG); contours(x, height, { levels, color: TOPO_LINE, indexColor: TOPO_LINE }); } });
 
 export const WALLPAPERS = [
   { name: "topo", draw(x) {
@@ -171,17 +173,17 @@ export const WALLPAPERS = [
     }
   } },
   // a ridge with a valley either side: the crest of a folded noise, tilted across the map
-  terrain("topo ridge", "#15181a", "rgba(212,148,62,.2)", "rgba(212,148,62,.42)", 40, (u, v) => {
+  terrain("topo ridge", 40, (u, v) => {
     const warp = fbm(u * 2.2, v * 2.2, 3) * 0.5;
     return 1 - Math.abs(fbm(u * 2.4 + warp, v * 2.4 - warp, 11, 3) * 2 - 1) * 0.9 + 0.35 * (1 - u) + 0.15 * v;
   }),
   // one peak, steep in the middle and flattening out, with rough ground around it
-  terrain("topo peak", "#14181a", "rgba(130,210,206,.2)", "rgba(130,210,206,.42)", 36, (u, v) => {
+  terrain("topo peak", 36, (u, v) => {
     const dx = (u - 0.52) * 1.78, dy = v - 0.5;
     return Math.exp(-(dx * dx + dy * dy) * 7) * 1.6 + 0.35 * fbm(u * 5, v * 5, 23);
   }),
   // low rolling hills: a few wide swells with no single summit
-  terrain("topo hills", "#161815", "rgba(163,204,124,.2)", "rgba(163,204,124,.4)", 32, (u, v) => fbm(u * 3.1, v * 3.1, 5, 3)),
+  terrain("topo hills", 32, (u, v) => fbm(u * 3.1, v * 3.1, 5, 3)),
 ];
 const drawn = [];
 let wallpaperAt = 0;
