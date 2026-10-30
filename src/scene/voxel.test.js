@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { CLOCK_BOX, CLOCK_INSET, MONITOR_BOX, MONITOR_INSET, SCREEN_LIFT, frontFace, parseVox, screenRect, splitParts, toScene } from "./voxel.js";
+import { CLOCK_BOX, CLOCK_INSET, MONITOR_BOTTOM, MONITOR_BOX, MONITOR_INSET, SCREEN_LIFT, frontFace, parseVox, screenRect, splitParts, toScene } from "./voxel.js";
 
 const file = readFileSync(new URL("./jrnxf.vox", import.meta.url));
 const { voxels, colour } = parseVox(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
@@ -20,14 +20,14 @@ test("the head and both forearms are found", () => {
 // a screen's four corners in the scene, as the plane is built: centred on its rect, facing +z
 const corners = (r) => [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]].map(([x, y]) => [x, y, r.z]);
 
-for (const [name, box, inset, aspect] of [["monitor", MONITOR_BOX, MONITOR_INSET, 640 / 360], ["clock", CLOCK_BOX, CLOCK_INSET, undefined]]) {
+for (const [name, box, inset, bottom] of [["monitor", MONITOR_BOX, MONITOR_INSET, MONITOR_BOTTOM], ["clock", CLOCK_BOX, CLOCK_INSET, CLOCK_INSET]]) {
   test(`the ${name} screen lies inside its face and a hair in front of it`, () => {
-    const face = frontFace(voxels, ...box), rect = screenRect(face, inset, aspect);
+    const face = frontFace(voxels, ...box), rect = screenRect(face, inset, undefined, bottom);
     const eps = 1e-9;
     for (const [x, y, z] of corners(rect)) {
       expect(x).toBeGreaterThan(face.x0 + inset - eps);
       expect(x).toBeLessThan(face.x1 - inset + eps);
-      expect(y).toBeGreaterThan(face.y0 - eps);
+      expect(y).toBeGreaterThan(face.y0 + bottom - eps);
       expect(y).toBeLessThan(face.y1 - inset + eps);
       expect(z - face.z).toBeCloseTo(SCREEN_LIFT, 9);
     }

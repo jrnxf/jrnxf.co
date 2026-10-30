@@ -160,6 +160,22 @@ function contours(x, height, { levels, color, indexColor, cell = 4, values = nul
     x.stroke();
   });
 }
+// the original topo's two hills (centre x, centre y, ring count, ring gap in px) as one heightfield
+const HILLS = [[200, 170, 11, 17], [500, 250, 9, 15]];
+// how many rings out a point lies on its hill: the radius over the ring gap, with the wobble the old rings had.
+// The wobble dies away with distance, so far out the rings relax to even circles and never bunch up.
+function ringsOut(px, py, cx, cy, gap) {
+  const dx = (px - cx) / 1.35, dy = py - cy, rho = Math.hypot(dx, dy), t = Math.atan2(dy, dx);
+  let k = rho / gap;
+  for (let i = 0; i < 5; i++) k = rho / (gap * (1 + (0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)) / (1 + (k / 11) ** 4)));
+  return k;
+}
+// each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every edge);
+// a soft maximum joins them without a crease
+export function topoHeight(u, v) {
+  const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
+  return Math.log(hs.reduce((a, h) => a + Math.exp(h / 0.6), 0)) * 0.6;
+}
 const mapBg = (x, bg) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); };
 // every terrain uses the original topo's colours: its background and its line colour (index lines are only heavier)
 const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
@@ -170,20 +186,7 @@ export const WALLPAPERS = [
   // as before, but as one heightfield, so every line is an iso-line of it and none can cross or touch
   { name: "topo", draw(x) {
     mapBg(x, TOPO_BG);
-    const HILLS = [[200, 170, 11, 17], [500, 250, 9, 15]];
-    // how many rings out a point lies on its hill: the radius over the ring gap, with the wobble the old rings had
-    const ringsOut = (px, py, cx, cy, gap) => {
-      const dx = (px - cx) / 1.35, dy = py - cy, rho = Math.hypot(dx, dy), t = Math.atan2(dy, dx);
-      let k = rho / gap;
-      for (let i = 0; i < 4; i++) k = rho / (gap * (1 + 0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)));
-      return k;
-    };
-    // each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every edge); a soft maximum joins them without a crease
-    const height = (u, v) => {
-      const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
-      return Math.log(hs.reduce((a, h) => a + Math.exp(h / 0.6), 0)) * 0.6;
-    };
-    contours(x, height, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 56 }, (_, i) => i - 45) });
+    contours(x, topoHeight, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 56 }, (_, i) => i - 45) });
   } },
   { name: "topo (old)", draw(x) {
     x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H); x.strokeStyle = TOPO_LINE; x.lineWidth = 1;
@@ -214,6 +217,10 @@ function wallpaperFor(i) {
   return drawn[i];
 }
 
+// the bezel's own colour, painted as a thin frame round the screen so nothing of the picture can run
+// out to the edge of the plane and be filtered, sampled or seen against the bezel voxels
+const BEZEL = "#151517", FRAME = 4;
+
 export function paintTerminals(x, t) {
   x.drawImage(wallpaperFor(wallpaperAt), 0, 0);
   x.fillStyle = "rgba(20,20,20,.82)"; x.fillRect(0, 0, W, 18);
@@ -236,4 +243,5 @@ export function paintTerminals(x, t) {
     if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = CURSOR.cursor; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
     x.restore();
   });
+  x.fillStyle = BEZEL; x.fillRect(0, 0, W, FRAME); x.fillRect(0, H - FRAME, W, FRAME); x.fillRect(0, 0, FRAME, H); x.fillRect(W - FRAME, 0, FRAME, H);
 }

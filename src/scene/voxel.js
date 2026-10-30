@@ -74,15 +74,16 @@ export function frontFace(voxels, [x0, x1], [y0, y1], [z0, z1]) {
 // a screen laid on a face: inset on the left, right and top, and as tall as its aspect (width / height)
 // says, or down to the same inset at the bottom without one. It sits a hair in front of the face.
 export const SCREEN_LIFT = 0.01;
-export function screenRect(face, inset, aspect) {
-  const w = face.x1 - face.x0 - 2 * inset, h = aspect ? w / aspect : face.y1 - face.y0 - 2 * inset;
+export function screenRect(face, inset, aspect, bottom = inset) {
+  const w = face.x1 - face.x0 - 2 * inset, h = aspect ? w / aspect : face.y1 - face.y0 - inset - bottom;
   return { x0: face.x0 + inset, x1: face.x1 - inset, y1: face.y1 - inset, y0: face.y1 - inset - h, w, h, z: face.z + SCREEN_LIFT };
 }
 
 // the two screens' faces in the scene, picked out of the voxels by the box each object sits in
 export const MONITOR_BOX = [[21, 41], [17, 29], [4, 5.8]];
 export const CLOCK_BOX = [[40, 46], [15.5, 18], [5, 9]];
-export const MONITOR_INSET = 0.6, CLOCK_INSET = 0.2;
+// the monitor's bezel: 0.3 on the sides and top, a little more along the bottom; the screen takes the rest of the face
+export const MONITOR_INSET = 0.3, MONITOR_BOTTOM = 0.6, CLOCK_INSET = 0.2;
 
 export const SKIN = ["#c98f68", "#b67b58"];
 const hex = ([r, g, b]) => "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
@@ -160,8 +161,8 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   }
 
   // screens: canvases drawn every frame or so, laid on the monitor's face and the clock's
-  // the monitor's plane is derived from the screen face of its voxels, inset inside the bezel, at the canvas's 16:9
-  const monFace = frontFace(voxels, ...MONITOR_BOX), monRect = screenRect(monFace, MONITOR_INSET, 640 / 360);
+  // the monitor's plane is derived from the screen face of its voxels, inset inside the bezel, filling the face down to the chin
+  const monFace = frontFace(voxels, ...MONITOR_BOX), monRect = screenRect(monFace, MONITOR_INSET, undefined, MONITOR_BOTTOM);
   const mon = canvasPlane(THREE, 640, 360, monRect.w, monRect.h); mon.mesh.position.set((monRect.x0 + monRect.x1) / 2, monRect.y0 + monRect.h / 2, monRect.z); root.add(mon.mesh);
   // the jrnxf mark on the back of the monitor, in a soft grey, read from behind
   root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
