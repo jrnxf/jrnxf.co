@@ -55,3 +55,7 @@ for (const [name, box, inset, aspect] of [["monitor", MONITOR_BOX, MONITOR_INSET
     }
   });
 }
+
+test("the face has its four blue eye voxels for the blink to swap", () => {
+  expect(parts.head.filter((v) => v.c === "#34485f").length).toBe(4);
+});
