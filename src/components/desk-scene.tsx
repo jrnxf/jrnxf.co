@@ -3,7 +3,7 @@ import type React from "react";
 import type { DeskHandle } from "@/scene/deskapp.js";
 import { markSVG } from "@/scene/mark.js";
 import { cn } from "@/lib/utils";
-import { ABOUT_LINKS, LinkPills, PROJECTS, pill } from "@/components/projects";
+import { ABOUT_LINKS, GithubIcon, PROJECTS, StarIcon, pill, useStars } from "@/components/projects";
 
 const MARK = markSVG();
 
@@ -56,6 +56,7 @@ function useMonitorScreen(deskRef: React.MutableRefObject<DeskHandle | null>, re
 type Nav = { index: number; go: (to: number) => void; close: () => void; instant: boolean };
 
 function IndexDisplay({ index, go, close, instant }: Nav) {
+  const stars = useStars();
   return (
     <nav
       aria-label="Projects"
@@ -78,6 +79,12 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
             >
               <span className={cn("w-5 tabular-nums transition-colors duration-150", i === index ? "text-[#2a2622]" : muted)}>{String(i + 1).padStart(2, "0")}</span>
               <span className={cn("transition-colors duration-150", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.55)] group-hover:text-[#2a2622]")}>{p.name}</span>
+              {stars[p.name] > 0 && (
+                <span className={cn("ml-auto flex items-center gap-1 tabular-nums transition-colors duration-150", i === index ? "text-[rgba(42,38,34,0.7)]" : "text-[rgba(42,38,34,0.4)]")} title={`${stars[p.name]} GitHub stars`}>
+                  <StarIcon />
+                  {stars[p.name]}
+                </span>
+              )}
             </button>
             <div className="idx-detail" data-open={i === index ? "" : undefined} inert={i !== index}>
               <div>
@@ -86,7 +93,16 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
                     {p.blurb}
                   </p>
                   <div className="idx-reveal" style={{ "--d": 45 } as React.CSSProperties}>
-                    <LinkPills links={p.links} />
+                    <a
+                      href={`https://github.com/${p.repo}`}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label={`${p.name} on GitHub`}
+                      title="GitHub"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(42,38,34,0.18)] text-[rgba(42,38,34,0.7)] transition-colors hover:border-[rgba(42,38,34,0.4)] hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]"
+                    >
+                      <GithubIcon />
+                    </a>
                   </div>
                 </div>
               </div>
