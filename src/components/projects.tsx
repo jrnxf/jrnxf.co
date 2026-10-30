@@ -10,27 +10,36 @@ type LinkItem = { label: string; href: string };
 // GitHub star count, shown until a fresh count arrives (see useStars). The list is ordered by that snapshot,
 // most stars first among the projects over SHOW_STARS_OVER, the rest after them in the order written; the
 // order never changes when live counts arrive.
-export type Project = { name: string; blurb: string; clip?: string; repo: string; stars: number };
+export type Project = { name: string; blurb: string; clip?: string; demo?: string; repo: string; stars: number };
 export const SHOW_STARS_OVER = 50;
 const WRITTEN: Project[] = [
   {
     name: "thokr",
     blurb: "A sleek typing test for the terminal, with visualized results and a log of how you did over time.",
     clip: "thokr",
+    demo: "https://thokr.jrnxf.co",
     repo: "jrnxf/thokr",
     stars: 602,
   },
   {
     name: "drip",
     blurb: "One command shows a brief native card from your Mac's notch when a build or a coding agent finishes, then gets out of the way.",
+    demo: "https://drip.jrnxf.co",
     repo: "jrnxf/drip",
     stars: 1,
   },
   {
     name: "okfs",
     blurb: "A web file browser in one binary. Run it in a folder and flip through every file inside.",
+    demo: "https://okfs.jrnxf.co",
     repo: "jrnxf/okfs",
     stars: 1,
+  },
+  {
+    name: "gh-eco",
+    blurb: "A GitHub CLI extension for exploring the ecosystem: look anyone up and browse their profile, contributions and repositories in the terminal.",
+    repo: "jrnxf/gh-eco",
+    stars: 482,
   },
   {
     name: "une.haus",
@@ -42,6 +51,7 @@ const WRITTEN: Project[] = [
     name: "fsrx",
     blurb: "Flow state reading in the terminal: pipe in any text and the start of each word is bolded so your eyes glide.",
     clip: "fsrx",
+    demo: "https://fsrx.jrnxf.co",
     repo: "jrnxf/fsrx",
     stars: 310,
   },

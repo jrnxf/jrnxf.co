@@ -30,6 +30,8 @@ const PANEL_COLORS = {
 } as React.CSSProperties;
 
 const serif = "font-['Fraunces',serif] font-light";
+// a quiet link: muted ink that darkens on hover, with the page's focus ring
+const quiet = "text-[rgba(42,38,34,0.6)] transition-colors hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]";
 const muted = "text-[rgba(42,38,34,0.55)]";
 
 // the project on the 3D monitor: its clip plays in an off-screen video the scene copies frames from
@@ -102,16 +104,26 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
                     {p.blurb}
                   </p>
                   <div className="idx-reveal" style={{ "--d": 45 } as React.CSSProperties}>
-                    <a
-                      href={`https://github.com/${p.repo}`}
-                      target="_blank"
-                      rel="noopener"
-                      aria-label={`${p.name} on GitHub`}
-                      title="GitHub"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded-full sm:h-8 sm:w-8 border border-[rgba(42,38,34,0.18)] text-[rgba(42,38,34,0.7)] transition-colors hover:border-[rgba(42,38,34,0.4)] hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]"
-                    >
-                      <GithubIcon />
-                    </a>
+                    <div className="-ml-2.5 flex items-center gap-1 font-mono text-xs">
+                      <a
+                        href={`https://github.com/${p.repo}`}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label={`${p.name} on GitHub`}
+                        title="GitHub"
+                        className={cn(quiet, "inline-flex h-11 w-11 items-center justify-center rounded-full sm:h-9 sm:w-9")}
+                      >
+                        <GithubIcon className="h-[18px] w-[18px]" />
+                      </a>
+                      {p.demo && (
+                        <a href={p.demo} target="_blank" rel="noopener" className={cn(quiet, "inline-flex h-11 items-center gap-1 rounded-full px-2.5 sm:h-9")}>
+                          demo
+                          <svg viewBox="0 0 12 12" aria-hidden="true" className="h-2.5 w-2.5 fill-none stroke-current" strokeWidth="1.4">
+                            <path d="M4 2h6v6M10 2 3 9" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
