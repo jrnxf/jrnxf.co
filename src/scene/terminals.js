@@ -132,13 +132,15 @@ function valueNoise(x, y, seed) {
 }
 function fbm(x, y, seed, octaves = 4) { let sum = 0, amp = 0.5, f = 1; for (let o = 0; o < octaves; o++) { sum += amp * valueNoise(x * f, y * f, seed + o * 17); amp /= 2; f *= 2; } return sum; }
 
-function contours(x, height, { levels, color, indexColor, cell = 4 }) {
+// width and index are for the engraved look of the terrain maps; values, when given, are the exact heights to trace
+function contours(x, height, { levels, color, indexColor, cell = 4, values = null, width = 0.8, indexWidth = 1.5 }) {
   const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(H / cell) + 1, hs = new Float32Array(cols * rows);
   let lo = Infinity, hi = -Infinity;
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const v = height(i * cell / W, j * cell / H); hs[j * cols + i] = v; lo = Math.min(lo, v); hi = Math.max(hi, v); }
-  for (let k = 1; k < levels; k++) {
-    const level = lo + ((hi - lo) * k) / levels, index = k % 5 === 0;
-    x.strokeStyle = index ? indexColor : color; x.lineWidth = index ? 1.5 : 0.8; x.beginPath();
+  const list = values ?? Array.from({ length: levels - 1 }, (_, k) => lo + ((hi - lo) * (k + 1)) / levels);
+  list.forEach((level, k) => {
+    const index = !values && (k + 1) % 5 === 0;
+    x.strokeStyle = index ? indexColor : color; x.lineWidth = index ? indexWidth : width; x.beginPath();
     for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
       const tl = hs[j * cols + i], tr = hs[j * cols + i + 1], br = hs[(j + 1) * cols + i + 1], bl = hs[(j + 1) * cols + i];
       const px = i * cell, py = j * cell, at = (a, b) => (level - a) / (b - a);
@@ -156,7 +158,7 @@ function contours(x, height, { levels, color, indexColor, cell = 4 }) {
       }
     }
     x.stroke();
-  }
+  });
 }
 const mapBg = (x, bg) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); };
 // every terrain uses the original topo's colours: its background and its line colour (index lines are only heavier)
@@ -164,8 +166,27 @@ const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
 const terrain = (name, levels, height) => ({ name, draw(x) { mapBg(x, TOPO_BG); contours(x, height, { levels, color: TOPO_LINE, indexColor: TOPO_LINE }); } });
 
 export const WALLPAPERS = [
+  // the original topo, rebuilt: the same two hills (centres, ring counts, spacing, wobble and 1.35 stretch)
+  // as before, but as one heightfield, so every line is an iso-line of it and none can cross or touch
   { name: "topo", draw(x) {
-    x.fillStyle = "#16181a"; x.fillRect(0, 0, W, H); x.strokeStyle = "rgba(136,192,208,.14)"; x.lineWidth = 1;
+    mapBg(x, TOPO_BG);
+    const HILLS = [[200, 170, 11, 17], [500, 250, 9, 15]];
+    // how many rings out a point lies on its hill: the radius over the ring gap, with the wobble the old rings had
+    const ringsOut = (px, py, cx, cy, gap) => {
+      const dx = (px - cx) / 1.35, dy = py - cy, rho = Math.hypot(dx, dy), t = Math.atan2(dy, dx);
+      let k = rho / gap;
+      for (let i = 0; i < 4; i++) k = rho / (gap * (1 + 0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)));
+      return k;
+    };
+    // each hill is its ring count minus the rings out; a soft maximum joins them without a crease
+    const height = (u, v) => {
+      const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
+      return Math.log(hs.reduce((a, h) => a + Math.exp(h / 1.1), 0)) * 1.1;
+    };
+    contours(x, height, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 11 }, (_, i) => i) });
+  } },
+  { name: "topo (old)", draw(x) {
+    x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H); x.strokeStyle = TOPO_LINE; x.lineWidth = 1;
     for (const [cx, cy, n, gap] of [[200, 170, 11, 17], [500, 250, 9, 15]]) for (let k = 1; k <= n; k++) {
       x.beginPath();
       for (let a = 0; a <= 64; a++) { const t = (a / 64) * Math.PI * 2, r = k * gap * (1 + .16 * Math.sin(3 * t + k * .35) + .09 * Math.sin(5 * t - k * .2)); x[a ? "lineTo" : "moveTo"](cx + r * 1.35 * Math.cos(t), cy + r * Math.sin(t)); }
