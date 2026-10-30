@@ -3,13 +3,22 @@ import type React from "react";
 import type { DeskHandle } from "@/scene/deskapp.js";
 import { markSVG } from "@/scene/mark.js";
 import { cn } from "@/lib/utils";
-import { ABOUT_LINKS, GithubIcon, PROJECTS, StarIcon, pill, useStars } from "@/components/projects";
+import { ABOUT_LINKS, GithubIcon, PROJECTS, SHOW_STARS_OVER, StarIcon, pill, useStars } from "@/components/projects";
 
 const MARK = markSVG();
 
 // the camera for the projects view: over his right shoulder, a little above his head, looking at the
 // monitor from about 20 degrees off its axis so the screen reads nearly face-on, and large in frame
-const PROJECTS_POSE = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
+const MONITOR_W = 20; // the monitor's width in scene units, with a little margin, for fitting it across a narrow screen
+function projectsPose(aspect: number) {
+  const wide = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
+  if (aspect >= 1.1) return wide;
+  // portrait: back off until the monitor spans the width, and look lower so it sits in the top part of the
+  // screen, leaving the bottom for the index
+  const r = MONITOR_W / (2 * Math.tan((16 * Math.PI) / 180) * aspect);
+  const visible = 2 * r * Math.tan((16 * Math.PI) / 180);
+  return { th: 0.5, ph: 1.4, r, look: [33.5, 22.5 - visible * 0.3, 5.8] as [number, number, number] };
+}
 const WHEEL_STEP = 50; // wheel delta that moves to the next project
 const WHEEL_PAUSE = 450; // ms before the wheel can move it again
 
@@ -61,25 +70,25 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
     <nav
       aria-label="Projects"
       data-instant={instant ? "" : undefined}
-      className="absolute z-[4] flex flex-col gap-1 max-sm:inset-x-[max(14px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
+      className="absolute z-[4] flex flex-col gap-1 overflow-y-auto overscroll-contain max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[58dvh] max-sm:rounded-t-2xl max-sm:bg-[rgba(235,230,222,0.94)] max-sm:px-[max(16px,env(safe-area-inset-left))] max-sm:pb-[max(14px,env(safe-area-inset-bottom))] max-sm:pt-2 max-sm:shadow-[0_-12px_30px_-18px_rgba(42,38,34,0.35)] max-sm:backdrop-blur-sm sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:max-h-[calc(100dvh-32px)] sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
     >
       <ol className="flex flex-col">
         {PROJECTS.map((p, i) => (
           <li
             key={p.name}
             style={{ "--i": i } as React.CSSProperties}
-            className={cn("idx-in border-t border-[rgba(42,38,34,0.12)] last:border-b", i !== index && "max-sm:hidden")}
+            className="idx-in border-t border-[rgba(42,38,34,0.12)] last:border-b"
           >
             <button
               type="button"
               aria-current={i === index}
               aria-expanded={i === index}
               onClick={() => go(i)}
-              className="group flex w-full cursor-pointer items-baseline gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890]"
+              className="group flex min-h-11 w-full cursor-pointer items-center gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890] max-sm:text-[13px] [@media(max-height:480px)]:min-h-9 [@media(max-height:480px)]:py-1.5"
             >
               <span className={cn("w-5 tabular-nums transition-colors duration-150", i === index ? "text-[#2a2622]" : muted)}>{String(i + 1).padStart(2, "0")}</span>
               <span className={cn("transition-colors duration-150", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.55)] group-hover:text-[#2a2622]")}>{p.name}</span>
-              {stars[p.name] > 0 && (
+              {stars[p.name] > SHOW_STARS_OVER && (
                 <span className={cn("ml-auto flex items-center gap-1 tabular-nums transition-colors duration-150", i === index ? "text-[rgba(42,38,34,0.7)]" : "text-[rgba(42,38,34,0.4)]")} title={`${stars[p.name]} GitHub stars`}>
                   <StarIcon />
                   {stars[p.name]}
@@ -99,7 +108,7 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
                       rel="noopener"
                       aria-label={`${p.name} on GitHub`}
                       title="GitHub"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[rgba(42,38,34,0.18)] text-[rgba(42,38,34,0.7)] transition-colors hover:border-[rgba(42,38,34,0.4)] hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full sm:h-8 sm:w-8 border border-[rgba(42,38,34,0.18)] text-[rgba(42,38,34,0.7)] transition-colors hover:border-[rgba(42,38,34,0.4)] hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]"
                     >
                       <GithubIcon />
                     </a>
@@ -110,7 +119,7 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
           </li>
         ))}
       </ol>
-      <button type="button" onClick={close} style={{ "--i": PROJECTS.length } as React.CSSProperties} className={cn(pill, "idx-in mt-3 self-start")}>
+      <button type="button" onClick={close} style={{ "--i": PROJECTS.length } as React.CSSProperties} className={cn(pill, "idx-in mt-3 min-h-11 self-start max-sm:px-4 sm:min-h-0")}>
         back to the desk
       </button>
     </nav>
@@ -156,6 +165,14 @@ export function DeskScene() {
   }, []);
 
   const inProjects = picked !== null;
+  // portrait or landscape, so the camera refits when a phone turns
+  const [shape, setShape] = useState("");
+  useEffect(() => {
+    const onResize = () => setShape(innerWidth / innerHeight >= 1.1 ? "wide" : "tall");
+    onResize();
+    addEventListener("resize", onResize);
+    return () => removeEventListener("resize", onResize);
+  }, []);
   const go = (to: number, key = false) => {
     viaKey.current = key;
     pick(to);
@@ -167,10 +184,10 @@ export function DeskScene() {
   useEffect(() => {
     const desk = deskRef.current;
     if (!desk) return;
-    if (inProjects) desk.flyTo(PROJECTS_POSE);
+    if (inProjects) desk.flyTo(projectsPose(innerWidth / innerHeight));
     else desk.flyTo();
     desk.setLocked(inProjects);
-  }, [inProjects, ready]);
+  }, [inProjects, ready, shape]);
 
   // the wheel and the arrow keys step through the projects while the monitor is up
   useEffect(() => {
@@ -236,7 +253,7 @@ export function DeskScene() {
             {phone ? "swipe to look · pinch to zoom" : "drag to look · scroll to zoom"}
           </div>
           <div className={cn("absolute bottom-[max(14px,env(safe-area-inset-bottom))] left-1/2 z-[3] flex -translate-x-1/2 items-center gap-3", chrome)}>
-            <button type="button" onClick={() => setPicked(0)} className={cn(pill, "border-[rgba(42,38,34,0.3)]")}>
+            <button type="button" onClick={() => setPicked(0)} className={cn(pill, "border-[rgba(42,38,34,0.3)] max-sm:min-h-11 max-sm:px-5")}>
               projects →
             </button>
             <ul className="hidden gap-3 font-mono text-xs sm:flex">

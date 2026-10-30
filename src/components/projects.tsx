@@ -7,9 +7,12 @@ type LinkItem = { label: string; href: string };
 
 // the projects, in the order they show. A clip is a small muted loop in /work (re-recorded from demos/*.tape);
 // a project without one shows a labelled placeholder until its clip is made. stars is a snapshot of the
-// GitHub star count, shown until a fresh count arrives (see useStars).
+// GitHub star count, shown until a fresh count arrives (see useStars). The list is ordered by that snapshot,
+// most stars first among the projects over SHOW_STARS_OVER, the rest after them in the order written; the
+// order never changes when live counts arrive.
 export type Project = { name: string; blurb: string; clip?: string; repo: string; stars: number };
-export const PROJECTS: Project[] = [
+export const SHOW_STARS_OVER = 50;
+const WRITTEN: Project[] = [
   {
     name: "thokr",
     blurb: "A sleek typing test for the terminal, with visualized results and a log of how you did over time.",
@@ -49,6 +52,7 @@ export const PROJECTS: Project[] = [
     stars: 0,
   },
 ];
+export const PROJECTS: Project[] = [...WRITTEN].sort((a, b) => (b.stars > SHOW_STARS_OVER ? b.stars : 0) - (a.stars > SHOW_STARS_OVER ? a.stars : 0));
 export const ABOUT_LINKS: LinkItem[] = [
   { label: "github", href: "https://github.com/jrnxf" },
   { label: "email", href: "mailto:colby@jrnxf.co" },
