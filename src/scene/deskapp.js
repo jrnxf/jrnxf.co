@@ -66,7 +66,6 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const PRESETS = {
     B: { th: 0.3, ph: 1.1, r: null, look: null, center: true, fit: true },
     D: { th: Math.PI / 2, ph: 1.45, r: 85, look: DESK_LOOK, center: true },
-    F: { th: Math.PI * 0.8, ph: 0.9, r: 22, look: [31, 24.5, 18], center: false }, // TEMPORARY, with the debug keys
   };
   let preset = PRESETS.B;
   let sph = { r: R0, th: preset.th, ph: preset.ph }, goal = { ...sph };
@@ -248,15 +247,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     if (n && e && !openName) { const b = stage.getBoundingClientRect(); tip.textContent = LABEL[n]; tip.style.left = `${e.clientX - b.left + 14}px`; tip.style.top = `${e.clientY - b.top + 14}px`; tip.classList.add("on"); }
     else tip.classList.remove("on");
   }
-  // TEMPORARY debug keys: b blinks now, f looks down at his face from in front (over the monitor)
-  const DEBUG_KEYS = true;
-  const onKey = (e) => {
-    if (e.key === "Escape" && openName) close();
-    if (DEBUG_KEYS && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      if (e.key === "b") desk?.blinkNow();
-      if (e.key === "f") setView("F");
-    }
-  };
+  const onKey = (e) => { if (e.key === "Escape" && openName) close(); };
   addEventListener("keydown", onKey);
 
   // ---------- panels ----------
