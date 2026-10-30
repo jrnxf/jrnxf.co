@@ -7,13 +7,6 @@ import { ABOUT_LINKS, LinkPills, PROJECTS, pill } from "@/components/projects";
 
 const MARK = markSVG();
 
-// TEMPORARY: three ways to show the projects beside the monitor, switched with a small "<  name  >" control
-// at the top right so a favourite can be picked live. Set to false (and keep one option, deleting the rest
-// of the OPTIONS code below) once one is chosen.
-const SHOW_OPTION_SWITCHER = true;
-const OPTIONS = ["index", "note", "strip"] as const;
-type Option = (typeof OPTIONS)[number];
-
 // the camera for the projects view: over his right shoulder, a little above his head, looking at the
 // monitor from about 20 degrees off its axis so the screen reads nearly face-on, and large in frame
 const PROJECTS_POSE = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
@@ -56,111 +49,55 @@ function useMonitorScreen(deskRef: React.MutableRefObject<DeskHandle | null>, re
 }
 
 // ------------------------------------------------------------------------------------------------
-// the three displays; each gets the picked project and a way to move, and is placed by its own classes
+// the projects index: a quiet numbered list down the right edge. The picked project opens to its blurb and
+// links; the list comes in once on first show. Keyboard steps change it at once (instant).
 // ------------------------------------------------------------------------------------------------
 
-type Nav = { index: number; go: (to: number) => void; close: () => void };
+type Nav = { index: number; go: (to: number) => void; close: () => void; instant: boolean };
 
-// index: a quiet vertical table of contents down the right edge; the picked project opens to its blurb and links
-function IndexDisplay({ index, go, close }: Nav) {
+function IndexDisplay({ index, go, close, instant }: Nav) {
   return (
     <nav
       aria-label="Projects"
+      data-instant={instant ? "" : undefined}
       className="absolute z-[4] flex flex-col gap-1 max-sm:inset-x-[max(14px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
     >
       <ol className="flex flex-col">
         {PROJECTS.map((p, i) => (
-          <li key={p.name} className={cn("border-t border-[rgba(42,38,34,0.12)] last:border-b", i !== index && "max-sm:hidden")}>
+          <li
+            key={p.name}
+            style={{ "--i": i } as React.CSSProperties}
+            className={cn("idx-in border-t border-[rgba(42,38,34,0.12)] last:border-b", i !== index && "max-sm:hidden")}
+          >
             <button
               type="button"
               aria-current={i === index}
+              aria-expanded={i === index}
               onClick={() => go(i)}
-              className="flex w-full cursor-pointer items-baseline gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890]"
+              className="group flex w-full cursor-pointer items-baseline gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890]"
             >
-              <span className={cn("w-5 tabular-nums", muted)}>{String(i + 1).padStart(2, "0")}</span>
-              <span className={cn("transition-colors", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.55)] hover:text-[#2a2622]")}>{p.name}</span>
+              <span className={cn("w-5 tabular-nums transition-colors duration-150", i === index ? "text-[#2a2622]" : muted)}>{String(i + 1).padStart(2, "0")}</span>
+              <span className={cn("transition-colors duration-150", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.55)] group-hover:text-[#2a2622]")}>{p.name}</span>
             </button>
-            {i === index && (
-              <div className="flex flex-col gap-3 pb-4 pl-8">
-                <p className={cn(serif, "text-[17px] leading-snug text-[rgba(42,38,34,0.88)]")}>{p.blurb}</p>
-                <LinkPills links={p.links} />
+            <div className="idx-detail" data-open={i === index ? "" : undefined} inert={i !== index}>
+              <div>
+                <div className="flex flex-col gap-3 pb-4 pl-8">
+                  <p className={cn(serif, "idx-reveal text-[17px] leading-snug text-[rgba(42,38,34,0.88)]")} style={{ "--d": 0 } as React.CSSProperties}>
+                    {p.blurb}
+                  </p>
+                  <div className="idx-reveal" style={{ "--d": 45 } as React.CSSProperties}>
+                    <LinkPills links={p.links} />
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </li>
         ))}
       </ol>
-      <button type="button" onClick={close} className={cn(pill, "mt-3 self-start")}>
+      <button type="button" onClick={close} style={{ "--i": PROJECTS.length } as React.CSSProperties} className={cn(pill, "idx-in mt-3 self-start")}>
         back to the desk
       </button>
     </nav>
-  );
-}
-
-// note: one index card, as if pinned beside the monitor, tipped a few degrees, turned over with its arrows
-function NoteDisplay({ index, go, close }: Nav) {
-  const p = PROJECTS[index];
-  return (
-    <div className="absolute z-[4] flex flex-col items-end gap-3 max-sm:inset-x-[max(14px,env(safe-area-inset-left))] max-sm:bottom-[max(14px,env(safe-area-inset-bottom))] sm:right-[max(32px,env(safe-area-inset-right))] sm:top-1/2 sm:w-[min(300px,28vw)] sm:-translate-y-1/2">
-      <article
-        key={p.name}
-        className="relative w-full rotate-[1.2deg] bg-[#fbf7ee] px-5 pb-5 pt-7 shadow-[0_1px_0_rgba(42,38,34,0.06),0_16px_30px_-14px_rgba(42,38,34,0.4)]"
-        style={{ backgroundImage: "repeating-linear-gradient(transparent 0 27px, rgba(131,160,190,0.22) 27px 28px)", backgroundPosition: "0 52px" }}
-      >
-        <span aria-hidden="true" className="absolute left-1/2 top-2.5 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[#fc6b83] shadow-[0_2px_3px_rgba(42,38,34,0.35)]" />
-        <p className={cn("font-mono text-[11px]", muted)}>
-          {String(index + 1).padStart(2, "0")} / {String(PROJECTS.length).padStart(2, "0")}
-        </p>
-        <h3 className="mt-1 font-mono text-sm font-medium">{p.name}</h3>
-        <p className={cn(serif, "mt-2 text-[17px] leading-[28px] text-[rgba(42,38,34,0.88)]")}>{p.blurb}</p>
-        <LinkPills links={p.links} className="mt-3" />
-      </article>
-      <div className="flex items-center gap-2">
-        <button type="button" aria-label="Previous project" onClick={() => go(index - 1)} className={cn(pill, "px-3.5")}>
-          ←
-        </button>
-        <button type="button" aria-label="Next project" onClick={() => go(index + 1)} className={cn(pill, "px-3.5")}>
-          →
-        </button>
-        <button type="button" onClick={close} className={pill}>
-          back to the desk
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// strip: a thin numbered list along the bottom edge with progress dots, the blurb above it, and arrow keys
-function StripDisplay({ index, go, close }: Nav) {
-  const p = PROJECTS[index];
-  return (
-    <div className="absolute inset-x-0 bottom-0 z-[4] flex flex-col gap-3 bg-gradient-to-t from-[#ebe6de] via-[rgba(235,230,222,0.9)] to-transparent px-[max(16px,env(safe-area-inset-left))] pb-[max(14px,env(safe-area-inset-bottom))] pt-14">
-      <div key={p.name} className="mx-auto flex w-full max-w-3xl flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-        <p className={cn(serif, "max-w-[44ch] text-[17px] leading-snug text-[rgba(42,38,34,0.9)]")}>{p.blurb}</p>
-        <LinkPills links={p.links} className="sm:justify-end" />
-      </div>
-      <nav aria-label="Projects" className="mx-auto flex w-full max-w-3xl items-center gap-4 border-t border-[rgba(42,38,34,0.14)] pt-2.5 font-mono text-xs">
-        <ol className="flex min-w-0 flex-1 items-center gap-x-4 overflow-x-auto max-sm:gap-x-3">
-          {PROJECTS.map((q, i) => (
-            <li key={q.name} className="shrink-0">
-              <button
-                type="button"
-                aria-current={i === index}
-                onClick={() => go(i)}
-                className={cn("flex cursor-pointer items-center gap-1.5 py-1 transition-colors focus-visible:outline-2 focus-visible:outline-[#fb9890]", i === index ? "text-[#2a2622]" : "text-[rgba(42,38,34,0.5)] hover:text-[#2a2622]")}
-              >
-                <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", i === index ? "bg-[#2a2622]" : i < index ? "bg-[rgba(42,38,34,0.4)]" : "border border-[rgba(42,38,34,0.35)]")} />
-                <span className="max-sm:hidden">{String(i + 1).padStart(2, "0")}</span>
-                <span className={cn(i !== index && "max-sm:hidden")}>{q.name}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        <span className={cn("hidden shrink-0 sm:inline", muted)}>← → keys</span>
-        <button type="button" onClick={close} className="shrink-0 cursor-pointer text-[rgba(42,38,34,0.6)] underline decoration-[rgba(42,38,34,0.25)] underline-offset-4 hover:text-[#2a2622]">
-          close
-        </button>
-      </nav>
-    </div>
   );
 }
 
@@ -173,7 +110,7 @@ export function DeskScene() {
   const [ready, setReady] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [phone, setPhone] = useState(false);
-  const [option, setOption] = useState<Option>(OPTIONS[0]);
+  const viaKey = useRef(false); // the last move came from the keyboard
   const [picked, setPicked] = useState<number | null>(null); // the project on the monitor, or null for the desk
 
   useEffect(() => {
@@ -203,7 +140,11 @@ export function DeskScene() {
   }, []);
 
   const inProjects = picked !== null;
-  const go = (to: number) => setPicked((cur) => (cur === null ? cur : Math.max(0, Math.min(PROJECTS.length - 1, to))));
+  const go = (to: number, key = false) => {
+    viaKey.current = key;
+    pick(to);
+  };
+  const pick = (to: number) => setPicked((cur) => (cur === null ? cur : Math.max(0, Math.min(PROJECTS.length - 1, to))));
   const close = () => setPicked(null);
 
   // the camera leans in on the monitor while a project is picked, and the scene stops taking drags and zoom
@@ -231,8 +172,8 @@ export function DeskScene() {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const cur = pickedRef.current ?? 0;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") go(cur + 1);
-      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") go(cur - 1);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") go(cur + 1, true);
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") go(cur - 1, true);
       else if (e.key === "Escape") close();
       else return;
       e.preventDefault();
@@ -249,8 +190,7 @@ export function DeskScene() {
 
   const hiddenVideo = useMonitorScreen(deskRef, ready, picked);
   const chrome = cn("transition-opacity", panelOpen && "pointer-events-none opacity-0");
-  const stepOption = (by: number) => setOption((o) => OPTIONS[(OPTIONS.indexOf(o) + by + OPTIONS.length) % OPTIONS.length]);
-  const nav: Nav = { index: picked ?? 0, go, close };
+  const nav: Nav = { index: picked ?? 0, go: (to) => go(to), close, instant: viaKey.current };
 
   return (
     <section
@@ -296,20 +236,7 @@ export function DeskScene() {
         </>
       )}
 
-      {inProjects && option === "index" && <IndexDisplay {...nav} />}
-      {inProjects && option === "note" && <NoteDisplay {...nav} />}
-      {inProjects && option === "strip" && <StripDisplay {...nav} />}
-
-      {SHOW_OPTION_SWITCHER && (
-        <div className={cn("absolute right-[max(14px,env(safe-area-inset-right))] top-[max(14px,env(safe-area-inset-top))] z-[5] flex items-center gap-1.5 font-mono text-[11px]", muted, chrome)}>
-          {([-1, 1] as const).map((by) => (
-            <button key={by} type="button" aria-label={by < 0 ? "Previous option" : "Next option"} onClick={() => stepOption(by)} className={cn(pill, "px-2.5 py-1 text-[11px]")}>
-              {by < 0 ? "<" : ">"}
-            </button>
-          ))}
-          <span className="min-w-[6ch]">{option}</span>
-        </div>
-      )}
+      {inProjects && <IndexDisplay {...nav} />}
     </section>
   );
 }

@@ -263,7 +263,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   }
   // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
   const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
-  return { root, update, framing, setScreen: (s) => { screen = s; lastDraw = 0; } };
+  return { root, update, framing, setScreen: (s) => { screen = s && { ...s, changedAt: performance.now() }; lastDraw = 0; } };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {

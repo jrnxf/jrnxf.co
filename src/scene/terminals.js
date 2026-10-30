@@ -195,9 +195,16 @@ function paintProject(x, { name, video }) {
   }
 }
 
+// screen.changedAt is when this project came up; for a moment the screen fades in from dark, in step with the
+// index opening beside it (same 220 ms and the same ease-out)
+const SWAP_MS = 220;
+
 export function paintTerminals(x, t, screen = null) {
-  if (screen) paintProject(x, screen);
-  else paintDesktop(x, t);
+  if (screen) {
+    paintProject(x, screen);
+    const p = Math.min(1, (performance.now() - (screen.changedAt ?? 0)) / SWAP_MS);
+    if (p < 1) { x.fillStyle = CURSOR.terminalBg; x.globalAlpha = (1 - p) ** 3; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
+  } else paintDesktop(x, t);
   x.fillStyle = BEZEL; x.fillRect(0, 0, W, FRAME); x.fillRect(0, H - FRAME, W, FRAME); x.fillRect(0, 0, FRAME, H); x.fillRect(W - FRAME, 0, FRAME, H);
 }
 

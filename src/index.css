@@ -15,3 +15,73 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
+
+/* the projects index: the picked project opens to its blurb and links, and the list comes in on first show */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.idx-detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.22s var(--ease-out),
+    opacity 0.15s ease;
+}
+.idx-detail[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.idx-detail > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.idx-reveal {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.22s var(--ease-out);
+}
+.idx-detail[data-open] .idx-reveal {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--d, 0) * 1ms + 50ms);
+}
+.idx-in {
+  animation: idx-in 0.26s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 180ms);
+}
+@keyframes idx-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* keyboard stepping is a high-frequency action: it changes the list at once */
+[data-instant] .idx-detail,
+[data-instant] .idx-reveal {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .idx-detail {
+    transition: opacity 0.15s ease;
+    grid-template-rows: 1fr;
+  }
+  .idx-detail:not([data-open]) {
+    grid-template-rows: 0fr;
+  }
+  .idx-reveal {
+    transform: none;
+    transition: opacity 0.15s ease;
+  }
+  .idx-in {
+    animation-name: idx-fade;
+    animation-delay: 0ms;
+  }
+  @keyframes idx-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
