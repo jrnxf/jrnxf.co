@@ -228,7 +228,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     }
   }
   // ---------- motion ----------
-  let frames = 0, lastDraw = 0;
+  let frames = 0, lastDraw = 0, screen = null;
   // a blink every 3-7 s, the eyes shut for about 135 ms, now and then twice in a row
   const BLINK = 135;
   let blinks = [], nextBlink = 3000 + Math.random() * 4000;
@@ -258,12 +258,12 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
       head.position.x = Math.sin(now / 4200) * 0.18;
       blink(now);
     }
-    if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000); mon.tex.needsUpdate = true; drawClock(now, reduced); }
+    if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000, screen); mon.tex.needsUpdate = true; drawClock(now, reduced); }
     drawSteam(now, reduced);
   }
   // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
   const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
-  return { root, update, framing };
+  return { root, update, framing, setScreen: (s) => { screen = s; lastDraw = 0; } };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {

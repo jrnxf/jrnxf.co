@@ -145,7 +145,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     if (u === 1) intro = null;
   }
   function setView(name) {
-    const p = PRESETS[name];
+    const p = typeof name === "string" ? PRESETS[name] : name;
     if (!p || openName) return;
     preset = p; intro = null;
     goal.th = p.th; goal.ph = p.ph;
@@ -190,8 +190,10 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   let pinch = null, drag = null, lastMove = performance.now();
   const el = renderer.domElement;
   const stageUV = (cx, cy) => { const r = el.getBoundingClientRect(); return [(cx - r.left) / r.width, (cy - r.top) / r.height]; };
+  // a locked scene ignores the wheel and drags, so the page can scroll over it
+  let locked = false;
   el.addEventListener("wheel", (e) => {
-    if (openName) return;
+    if (openName || locked) return;
     intro = null;
     e.preventDefault();
     // pinch on a trackpad arrives as ctrl+wheel with small deltas; a plain wheel needs a gentler step
@@ -201,6 +203,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   }, { passive: false });
   const pinchSpan = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
   el.addEventListener("pointerdown", (e) => {
+    if (locked) return;
     intro = null;
     if (e.pointerType === "touch") {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); el.setPointerCapture(e.pointerId);
@@ -262,7 +265,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     lastNow = now;
     // the sway swings evenly around wherever the view rests: each time it starts, it starts from zero
     if (intro) stepIntro(now);
-    if (!intro && !reduced && !drag && !openName && now - lastMove > 2500) {
+    if (!intro && !reduced && !locked && preset.sway !== false && !drag && !openName && now - lastMove > 2500) {
       if (!swaying) { swaying = true; swayClock = 0; swayOff = 0; }
       swayClock += dt;
       const off = Math.sin(swayClock / 6000) * 0.4;
@@ -290,6 +293,12 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     renderer.dispose(); renderer.forceContextLoss();
     el.remove(); panel.remove();
   }
-  return { open, close, destroy };
+  return {
+    open, close, destroy,
+    // flies the camera to a pose ({ th, ph, r, look }), or home when none is given
+    flyTo: (pose) => setView(pose ? { sway: false, center: false, ...pose } : "B"),
+    setScreen: (s) => desk?.setScreen(s),
+    setLocked: (v) => { locked = v; el.style.touchAction = v ? "pan-y" : "none"; el.style.cursor = v ? "" : "grab"; },
+  };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));

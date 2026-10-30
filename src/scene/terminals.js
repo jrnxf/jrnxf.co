@@ -183,7 +183,25 @@ function wallpaperCanvas() {
 // out to the edge of the plane and be filtered, sampled or seen against the bezel voxels
 const BEZEL = "#151517", FRAME = 4;
 
-export function paintTerminals(x, t) {
+// A project shown on the whole screen instead of the terminals: its clip, cover-fitted, or a labelled
+// placeholder until it has one. screen is { name, video? }.
+function paintProject(x, { name, video }) {
+  x.fillStyle = CURSOR.terminalBg; x.fillRect(0, 0, W, H);
+  if (video && video.readyState >= 2 && video.videoWidth) {
+    const s = Math.max(W / video.videoWidth, H / video.videoHeight), w = video.videoWidth * s, h = video.videoHeight * s;
+    x.drawImage(video, (W - w) / 2, (H - h) / 2, w, h);
+  } else {
+    x.fillStyle = CURSOR.faint; x.font = `14px ${MONO}`; x.textAlign = "center"; x.fillText(`${name} · clip coming`, W / 2, H / 2 + 5); x.textAlign = "left";
+  }
+}
+
+export function paintTerminals(x, t, screen = null) {
+  if (screen) paintProject(x, screen);
+  else paintDesktop(x, t);
+  x.fillStyle = BEZEL; x.fillRect(0, 0, W, FRAME); x.fillRect(0, H - FRAME, W, FRAME); x.fillRect(0, 0, FRAME, H); x.fillRect(W - FRAME, 0, FRAME, H);
+}
+
+function paintDesktop(x, t) {
   x.drawImage(wallpaperCanvas(), 0, 0);
   x.fillStyle = "rgba(20,20,20,.82)"; x.fillRect(0, 0, W, 18);
   const wins = windowsAt(t);
@@ -205,5 +223,4 @@ export function paintTerminals(x, t) {
     if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = CURSOR.cursor; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
     x.restore();
   });
-  x.fillStyle = BEZEL; x.fillRect(0, 0, W, FRAME); x.fillRect(0, H - FRAME, W, FRAME); x.fillRect(0, 0, FRAME, H); x.fillRect(W - FRAME, 0, FRAME, H);
 }
