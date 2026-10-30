@@ -144,7 +144,8 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   // reach for the trackpad. A forearm's elbow is the middle of its back end.
   const head = new THREE.Group();
   // the eyes are their own little meshes so a blink can swap them for skin: the blue voxels of the face, and the same cells in skin
-  const EYE = "#34485f", LID = "#c98f68";
+  // the lid is the shaded skin tone of the .vox (a touch darker than the face's own #c98f68), so a shut eye reads as a lid
+  const EYE = "#34485f", LID = "#b67b58";
   const eyeCells = parts.head.filter((v) => v.c === EYE);
   head.add(voxMesh(THREE, parts.head.filter((v) => v.c !== EYE), shadows));
   const eyesOpen = voxMesh(THREE, eyeCells, shadows), eyesShut = voxMesh(THREE, eyeCells.map((v) => ({ ...v, c: LID })), shadows);
@@ -238,8 +239,10 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   // a blink every 3-7 s, the eyes shut for about 135 ms, now and then twice in a row
   const BLINK = 135;
   let blinks = [], nextBlink = 3000 + Math.random() * 4000;
+  let blinkNow = false;
   function blink(now) {
-    if (!blinks.length && now >= nextBlink) {
+    if (!blinks.length && (now >= nextBlink || blinkNow)) {
+      blinkNow = false;
       blinks = [[now, now + BLINK]];
       if (Math.random() < 0.2) blinks.push([now + BLINK + 110, now + 2 * BLINK + 110]);
       nextBlink = blinks[blinks.length - 1][1] + 3000 + Math.random() * 4000;
@@ -273,7 +276,7 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   }
   // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
   const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
-  return { root, hit, update, highlight, framing };
+  return { root, hit, update, highlight, framing, blinkNow: () => { blinkNow = true; } };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {
