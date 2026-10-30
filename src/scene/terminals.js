@@ -120,27 +120,16 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
-// ---- wallpapers: TEMPORARY options to choose from, each drawn once on a canvas and kept ----
+// ---- the wallpaper: a topographic map. Its contour lines are the iso-lines of one smooth heightfield
+// (the two hills below), traced with marching squares, so they never cross or touch ----
+const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
 
-// ---- realistic topo: contour lines are the iso-lines of one smooth heightfield, traced with marching squares,
-// so they never cross or touch; evenly spaced levels, every fifth one an index contour drawn heavier ----
-function hash2(i, j, seed) { let h = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(seed, 2147483647); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
-function valueNoise(x, y, seed) {
-  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
-  const a = hash2(i, j, seed), b = hash2(i + 1, j, seed), c = hash2(i, j + 1, seed), d = hash2(i + 1, j + 1, seed);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
-function fbm(x, y, seed, octaves = 4) { let sum = 0, amp = 0.5, f = 1; for (let o = 0; o < octaves; o++) { sum += amp * valueNoise(x * f, y * f, seed + o * 17); amp /= 2; f *= 2; } return sum; }
-
-// width and index are for the engraved look of the terrain maps; values, when given, are the exact heights to trace
-function contours(x, height, { levels, color, indexColor, cell = 4, values = null, width = 0.8, indexWidth = 1.5 }) {
+// every height in `values` is traced as a line; cell is the size in px of the squares the field is sampled on
+function contours(x, height, { values, cell = 2 }) {
   const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(H / cell) + 1, hs = new Float32Array(cols * rows);
-  let lo = Infinity, hi = -Infinity;
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const v = height(i * cell / W, j * cell / H); hs[j * cols + i] = v; lo = Math.min(lo, v); hi = Math.max(hi, v); }
-  const list = values ?? Array.from({ length: levels - 1 }, (_, k) => lo + ((hi - lo) * (k + 1)) / levels);
-  list.forEach((level, k) => {
-    const index = !values && (k + 1) % 5 === 0;
-    x.strokeStyle = index ? indexColor : color; x.lineWidth = index ? indexWidth : width; x.beginPath();
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) hs[j * cols + i] = height((i * cell) / W, (j * cell) / H);
+  x.strokeStyle = TOPO_LINE; x.lineWidth = 1; x.beginPath();
+  for (const level of values) {
     for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
       const tl = hs[j * cols + i], tr = hs[j * cols + i + 1], br = hs[(j + 1) * cols + i + 1], bl = hs[(j + 1) * cols + i];
       const px = i * cell, py = j * cell, at = (a, b) => (level - a) / (b - a);
@@ -157,64 +146,37 @@ function contours(x, height, { levels, color, indexColor, cell = 4, values = nul
         if ((tl > level) === centre) { seg(pts[0], pts[1]); seg(pts[2], pts[3]); } else { seg(pts[0], pts[3]); seg(pts[1], pts[2]); }
       }
     }
-    x.stroke();
-  });
+  }
+  x.stroke();
 }
-// the original topo's two hills (centre x, centre y, ring count, ring gap in px) as one heightfield
+
+// the two hills (centre x, centre y, ring count, ring gap in px) as one heightfield
 const HILLS = [[200, 170, 11, 17], [500, 250, 9, 15]];
-// how many rings out a point lies on its hill: the radius over the ring gap, with the wobble the old rings had.
-// The wobble dies away with distance, so far out the rings relax to even circles and never bunch up.
+// how many rings out a point lies on its hill: the radius over the ring gap, with a wobble that dies away
+// with distance, so far out the rings relax to even circles and never bunch up
 function ringsOut(px, py, cx, cy, gap) {
   const dx = (px - cx) / 1.35, dy = py - cy, rho = Math.hypot(dx, dy), t = Math.atan2(dy, dx);
   let k = rho / gap;
   for (let i = 0; i < 5; i++) k = rho / (gap * (1 + (0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)) / (1 + (k / 11) ** 4)));
   return k;
 }
-// each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every edge);
-// a soft maximum joins them without a crease
+// each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every
+// edge); a soft maximum joins them without a crease
 export function topoHeight(u, v) {
   const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
   return Math.log(hs.reduce((a, h) => a + Math.exp(h / 0.6), 0)) * 0.6;
 }
-const mapBg = (x, bg) => { x.fillStyle = bg; x.fillRect(0, 0, W, H); };
-// every terrain uses the original topo's colours: its background and its line colour (index lines are only heavier)
-const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
-const terrain = (name, levels, height) => ({ name, draw(x) { mapBg(x, TOPO_BG); contours(x, height, { levels, color: TOPO_LINE, indexColor: TOPO_LINE }); } });
 
-export const WALLPAPERS = [
-  // the original topo, rebuilt: the same two hills (centres, ring counts, spacing, wobble and 1.35 stretch)
-  // as before, but as one heightfield, so every line is an iso-line of it and none can cross or touch
-  { name: "topo", draw(x) {
-    mapBg(x, TOPO_BG);
-    contours(x, topoHeight, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 56 }, (_, i) => i - 45) });
-  } },
-  { name: "topo (old)", draw(x) {
-    x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H); x.strokeStyle = TOPO_LINE; x.lineWidth = 1;
-    for (const [cx, cy, n, gap] of [[200, 170, 11, 17], [500, 250, 9, 15]]) for (let k = 1; k <= n; k++) {
-      x.beginPath();
-      for (let a = 0; a <= 64; a++) { const t = (a / 64) * Math.PI * 2, r = k * gap * (1 + .16 * Math.sin(3 * t + k * .35) + .09 * Math.sin(5 * t - k * .2)); x[a ? "lineTo" : "moveTo"](cx + r * 1.35 * Math.cos(t), cy + r * Math.sin(t)); }
-      x.closePath(); x.stroke();
-    }
-  } },
-  // a ridge with a valley either side: the crest of a folded noise, tilted across the map
-  terrain("topo ridge", 40, (u, v) => {
-    const warp = fbm(u * 2.2, v * 2.2, 3) * 0.5;
-    return 1 - Math.abs(fbm(u * 2.4 + warp, v * 2.4 - warp, 11, 3) * 2 - 1) * 0.9 + 0.35 * (1 - u) + 0.15 * v;
-  }),
-  // one peak, steep in the middle and flattening out, with rough ground around it
-  terrain("topo peak", 36, (u, v) => {
-    const dx = (u - 0.52) * 1.78, dy = v - 0.5;
-    return Math.exp(-(dx * dx + dy * dy) * 7) * 1.6 + 0.35 * fbm(u * 5, v * 5, 23);
-  }),
-  // low rolling hills: a few wide swells with no single summit
-  terrain("topo hills", 32, (u, v) => fbm(u * 3.1, v * 3.1, 5, 3)),
-];
-const drawn = [];
-let wallpaperAt = 0;
-export function selectWallpaper(i) { wallpaperAt = i; }
-function wallpaperFor(i) {
-  if (!drawn[i]) { const c = document.createElement("canvas"); c.width = W; c.height = H; WALLPAPERS[i].draw(c.getContext("2d")); drawn[i] = c; }
-  return drawn[i];
+// drawn once, then copied onto the screen each time it is painted
+let wallpaper = null;
+function wallpaperCanvas() {
+  if (!wallpaper) {
+    wallpaper = document.createElement("canvas"); wallpaper.width = W; wallpaper.height = H;
+    const x = wallpaper.getContext("2d");
+    x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H);
+    contours(x, topoHeight, { values: Array.from({ length: 56 }, (_, i) => i - 45) });
+  }
+  return wallpaper;
 }
 
 // the bezel's own colour, painted as a thin frame round the screen so nothing of the picture can run
@@ -222,7 +184,7 @@ function wallpaperFor(i) {
 const BEZEL = "#151517", FRAME = 4;
 
 export function paintTerminals(x, t) {
-  x.drawImage(wallpaperFor(wallpaperAt), 0, 0);
+  x.drawImage(wallpaperCanvas(), 0, 0);
   x.fillStyle = "rgba(20,20,20,.82)"; x.fillRect(0, 0, W, 18);
   const wins = windowsAt(t);
   wins.forEach((win, i) => {

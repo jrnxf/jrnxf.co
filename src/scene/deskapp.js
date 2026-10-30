@@ -1,15 +1,11 @@
-// The app around the voxel desk: the renderer, an orbit camera, picking, and the small panel the
-// mug opens. `startDesk` returns a handle whose `destroy` undoes it all.
+// The app around the voxel desk: the renderer, an orbit camera, and the small panel the page opens. `startDesk` returns a handle whose `destroy` undoes it all.
 
 import * as THREE from "three";
 import { buildDesk } from "./voxel.js";
 import { markSVG } from "./mark.js";
 import VOX_URL from "./jrnxf.vox?url";
-import { WALLPAPERS, selectWallpaper } from "./terminals.js";
 
 const CSS = `
-.desk-tip{position:absolute;z-index:5;pointer-events:none;font:500 12px "Geist Mono",ui-monospace,monospace;color:var(--tip-fg,#1d1a16);background:var(--tip-bg,rgba(243,236,223,.94));padding:6px 10px;border-radius:999px;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;white-space:nowrap}
-.desk-tip.on{opacity:1;transform:none}
 .desk-panel{position:absolute;z-index:6;display:none;flex-direction:column;gap:12px;overflow:auto;color:var(--p-fg,#ededeb);background:var(--p-bg,#0d0d0e);font:14px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .desk-panel.on{display:flex}
 .desk-panel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,calc(100% - 32px));max-height:calc(100% - 32px);padding:20px 22px;border-radius:18px;box-shadow:0 0 0 10px #1b1b1d,0 0 0 11px #3a3a3e,0 40px 80px -20px rgba(0,0,0,.7);animation:deskIn .35s cubic-bezier(.2,.8,.2,1)}
@@ -27,7 +23,6 @@ const CSS = `
 .desk-mark{width:min(300px,70%);color:var(--p-fg,#ededeb)}.desk-mark svg{width:100%;height:auto;display:block}
 @media (max-width:720px){.desk-panel{left:0;top:auto;bottom:0;transform:none;width:100%;max-height:82%;border-radius:18px 18px 0 0;box-shadow:0 -20px 40px -10px rgba(0,0,0,.6);animation:none}}
 `;
-const LABEL = { mug: "the mug · about" };
 
 export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   if (!document.getElementById("desk-css")) { const st = document.createElement("style"); st.id = "desk-css"; st.textContent = CSS; document.head.append(st); }
@@ -45,11 +40,10 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   renderer.domElement.style.touchAction = "none";
   const scene = new THREE.Scene();
   // the voxels load from the .vox file; until they arrive the stage stays empty
-  let desk = null, targets = [], dead = false;
+  let desk = null, dead = false;
   fetch(VOX_URL).then((r) => { if (!r.ok) throw new Error(`jrnxf.vox: ${r.status}`); return r.arrayBuffer(); }).then((buf) => {
     if (dead) return;
     desk = buildDesk(THREE, buf, { shadows: true, backdrop });
-    targets = Object.values(desk.hit);
     scene.add(desk.root);
     if (preset.r == null) goal.r = sph.r = distance();
     reframe(true);
@@ -192,11 +186,8 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   const place = () => { const { r, th, ph } = sph; cam.position.set(look.x + r * Math.sin(ph) * Math.sin(th), look.y + r * Math.cos(ph), look.z + r * Math.sin(ph) * Math.cos(th)); cam.lookAt(look); };
 
   // ---------- input ----------
-  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  const tip = document.createElement("div"); tip.className = "desk-tip"; stage.append(tip);
   const touches = new Map();
   let pinch = null, drag = null, lastMove = performance.now();
-  const pick = (e) => { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, cam); const h = ray.intersectObjects(targets)[0]; return h ? h.object.userData.name : null; };
   const el = renderer.domElement;
   const stageUV = (cx, cy) => { const r = el.getBoundingClientRect(); return [(cx - r.left) / r.width, (cy - r.top) / r.height]; };
   el.addEventListener("wheel", (e) => {
@@ -233,20 +224,13 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
       goal.th = drag.th - dx * 0.005;
       goal.ph = clamp(drag.ph - dy * 0.004, LIM.ph);
     }
-    if (e.pointerType === "mouse") setHover(pick(e), e);
   });
-  // a pinch must not end in a tap that opens the mug, so it holds the drag shut until every finger is up
+  // a pinch ends with the drag shut, so lifting the fingers one after the other does not read as a drag
   let pinched = false;
   const endTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (!touches.size) pinched = false; };
-  el.addEventListener("pointerup", (e) => { const was = pinched; endTouch(e); const d = was ? null : drag; drag = null; if (d && d.moved < 6) { const n = pick(e); if (n) open(n); } });
+  el.addEventListener("pointerup", (e) => { endTouch(e); drag = null; });
   el.addEventListener("pointercancel", (e) => { endTouch(e); drag = null; });
-  el.addEventListener("pointerleave", () => setHover(null));
-  function setHover(n, e) {
-    desk?.highlight(n && !openName ? n : null);
-    el.style.cursor = n ? "pointer" : "grab";
-    if (n && e && !openName) { const b = stage.getBoundingClientRect(); tip.textContent = LABEL[n]; tip.style.left = `${e.clientX - b.left + 14}px`; tip.style.top = `${e.clientY - b.top + 14}px`; tip.classList.add("on"); }
-    else tip.classList.remove("on");
-  }
+  el.style.cursor = "grab";
   const onKey = (e) => { if (e.key === "Escape" && openName) close(); };
   addEventListener("keydown", onKey);
 
@@ -255,7 +239,7 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
   let openName = null;
   function open(name) {
     if (openName === name) return;
-    openName = name; setHover(null); onOpenChange?.(true);
+    openName = name; onOpenChange?.(true);
     const top = `<div class="desk-top"><button class="desk-x" aria-label="Back to the desk">← back to the desk</button></div>`;
     panel.innerHTML = `${top}<div class="desk-mark">${markSVG()}</div><p class="desk-p big">Hi, I'm Colby. I build small, sharp tools for the terminal and the Mac, from a beach in northern Portugal.</p>
       <div class="desk-links"><a href="mailto:colby@jrnxf.co">colby@jrnxf.co</a><a href="https://github.com/jrnxf" target="_blank" rel="noopener">github</a><a href="https://instagram.com/jrn.xf" target="_blank" rel="noopener">instagram</a><a href="https://www.youtube.com/@jrnxf" target="_blank" rel="noopener">youtube</a><a href="https://twitter.com/jrn_xf" target="_blank" rel="noopener">twitter</a></div>`;
@@ -304,11 +288,8 @@ export function startDesk({ stage, backdrop = "white", onOpenChange }) {
     removeEventListener("keydown", onKey); removeEventListener("resize", resize);
     desk?.root.traverse((o) => { o.geometry?.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose(); m.dispose(); }); });
     renderer.dispose(); renderer.forceContextLoss();
-    el.remove(); tip.remove(); panel.remove();
+    el.remove(); panel.remove();
   }
-  // TEMPORARY, with the wallpaper picker in the page: steps through the monitor's wallpapers and returns the new name
-  let wallpaper = 0;
-  const cycleWallpaper = (step) => { wallpaper = (wallpaper + step + WALLPAPERS.length) % WALLPAPERS.length; selectWallpaper(wallpaper); return WALLPAPERS[wallpaper].name; };
-  return { open, close, destroy, cycleWallpaper, wallpaperName: () => WALLPAPERS[wallpaper].name };
+  return { open, close, destroy };
 }
 const clamp = (v, [a, b]) => Math.max(a, Math.min(b, v));

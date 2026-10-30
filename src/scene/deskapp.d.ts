@@ -1,10 +1,7 @@
 export interface DeskHandle {
-  open(name: "mug"): void;
+  open(name: "about"): void;
   close(): void;
   destroy(): void;
-  /** TEMPORARY: steps the monitor wallpaper by one either way and returns its name */
-  cycleWallpaper(step: 1 | -1): string;
-  wallpaperName(): string;
 }
 
 export function startDesk(options: {

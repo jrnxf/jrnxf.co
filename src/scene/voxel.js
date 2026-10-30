@@ -227,13 +227,6 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
       s2.m.scale.setScalar(0.7 + t * 1.1);
     }
   }
-  // click targets
-  const hit = {};
-  const target = (name, [x, y, z], [w, h, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false })); m.position.set(x, y, z); m.userData.name = name; root.add(m); hit[name] = m; };
-  target("mug", [mx + 0.2, my - 0.5, mz], [3.4, 2.8, 3]);
-  const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xfb9890, transparent: true, opacity: 0.9 }));
-  outline.visible = false; root.add(outline);
-
   // ---------- motion ----------
   let frames = 0, lastDraw = 0;
   // a blink every 3-7 s, the eyes shut for about 135 ms, now and then twice in a row
@@ -268,13 +261,9 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
     if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000); mon.tex.needsUpdate = true; drawClock(now, reduced); }
     drawSteam(now, reduced);
   }
-  function highlight(name) {
-    if (!name) { outline.visible = false; return; }
-    const m = hit[name]; outline.visible = true; outline.position.copy(m.position); outline.scale.copy(new THREE.Vector3(m.geometry.parameters.width + 0.6, m.geometry.parameters.height + 0.6, m.geometry.parameters.depth + 0.6));
-  }
   // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
   const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
-  return { root, hit, update, highlight, framing };
+  return { root, update, framing };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {
