@@ -178,12 +178,12 @@ export const WALLPAPERS = [
       for (let i = 0; i < 4; i++) k = rho / (gap * (1 + 0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)));
       return k;
     };
-    // each hill is its ring count minus the rings out; a soft maximum joins them without a crease
+    // each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every edge); a soft maximum joins them without a crease
     const height = (u, v) => {
       const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
-      return Math.log(hs.reduce((a, h) => a + Math.exp(h / 1.1), 0)) * 1.1;
+      return Math.log(hs.reduce((a, h) => a + Math.exp(h / 0.6), 0)) * 0.6;
     };
-    contours(x, height, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 11 }, (_, i) => i) });
+    contours(x, height, { color: TOPO_LINE, indexColor: TOPO_LINE, cell: 2, width: 1, values: Array.from({ length: 56 }, (_, i) => i - 45) });
   } },
   { name: "topo (old)", draw(x) {
     x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H); x.strokeStyle = TOPO_LINE; x.lineWidth = 1;
