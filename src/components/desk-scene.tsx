@@ -17,7 +17,7 @@ function projectsPose(aspect: number) {
   // screen, leaving the bottom for the index
   const r = MONITOR_W / (2 * Math.tan((16 * Math.PI) / 180) * aspect);
   const visible = 2 * r * Math.tan((16 * Math.PI) / 180);
-  return { th: 0.5, ph: 1.4, r, look: [33.5, 22.5 - visible * 0.3, 5.8] as [number, number, number] };
+  return { th: 0.75, ph: 1.4, r, look: [33.5, 22.5 - visible * 0.3, 5.8] as [number, number, number] };
 }
 const WHEEL_STEP = 50; // wheel delta that moves to the next project
 const WHEEL_PAUSE = 450; // ms before the wheel can move it again
@@ -67,6 +67,10 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
       data-instant={instant ? "" : undefined}
       className="absolute z-[4] flex flex-col gap-1 overflow-y-auto overscroll-contain max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[58dvh] max-sm:rounded-t-2xl max-sm:bg-[rgba(235,230,222,0.94)] max-sm:px-[max(16px,env(safe-area-inset-left))] max-sm:pb-[max(14px,env(safe-area-inset-bottom))] max-sm:pt-2 max-sm:shadow-[0_-12px_30px_-18px_rgba(42,38,34,0.35)] max-sm:backdrop-blur-sm sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:max-h-[calc(100dvh-32px)] sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
     >
+      {/* above the list on wider screens, where below it would sit over the clock on the desk */}
+      <button type="button" onClick={close} style={{ "--i": PROJECTS.length } as React.CSSProperties} className={cn(pill, "idx-in min-h-11 self-start max-sm:order-last max-sm:mt-3 max-sm:px-4 sm:mb-3 sm:min-h-0")}>
+        back to the desk
+      </button>
       <ol className="flex flex-col">
         {PROJECTS.map((p, i) => (
           <li
@@ -124,9 +128,6 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
           </li>
         ))}
       </ol>
-      <button type="button" onClick={close} style={{ "--i": PROJECTS.length } as React.CSSProperties} className={cn(pill, "idx-in mt-3 min-h-11 self-start max-sm:px-4 sm:min-h-0")}>
-        back to the desk
-      </button>
     </nav>
   );
 }
