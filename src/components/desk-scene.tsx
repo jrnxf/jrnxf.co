@@ -22,13 +22,6 @@ function projectsPose(aspect: number) {
 const WHEEL_STEP = 50; // wheel delta that moves to the next project
 const WHEEL_PAUSE = 450; // ms before the wheel can move it again
 
-const PANEL_COLORS = {
-  "--p-bg": "#f6f2ec",
-  "--p-fg": "#2a2622",
-  "--p-muted": "#6d655c",
-  "--p-line": "#ddd5ca",
-} as React.CSSProperties;
-
 const serif = "font-['Fraunces',serif] font-light";
 // a quiet link: muted ink that darkens on hover, with the page's focus ring
 const quiet = "text-[rgba(42,38,34,0.6)] transition-colors hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]";
@@ -145,7 +138,6 @@ export function DeskScene() {
   const stageRef = useRef<HTMLDivElement>(null);
   const deskRef = useRef<DeskHandle | null>(null);
   const [ready, setReady] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
   const [phone, setPhone] = useState(false);
   const viaKey = useRef(false); // the last move came from the keyboard
   const [picked, setPicked] = useState<number | null>(null); // the project on the monitor, or null for the desk
@@ -156,7 +148,7 @@ export function DeskScene() {
     let cancelled = false;
     void import("@/scene/deskapp.js").then(({ startDesk }) => {
       if (cancelled) return;
-      deskRef.current = startDesk({ stage, backdrop: "white", onOpenChange: setPanelOpen });
+      deskRef.current = startDesk({ stage, backdrop: "white" });
       setReady(true);
     });
     return () => {
@@ -206,6 +198,8 @@ export function DeskScene() {
     if (!inProjects) return;
     let acc = 0, until = 0;
     const onWheel = (e: WheelEvent) => {
+      const nav = e.target instanceof Element ? e.target.closest("nav") : null;
+      if (nav && nav.scrollHeight > nav.clientHeight) return;
       const now = performance.now();
       if (now < until) return;
       acc += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
@@ -234,21 +228,19 @@ export function DeskScene() {
   pickedRef.current = picked;
 
   const hiddenVideo = useMonitorScreen(deskRef, ready, picked);
-  const chrome = cn("transition-opacity", panelOpen && "pointer-events-none opacity-0");
   const nav: Nav = { index: picked ?? 0, go: (to) => go(to), close, instant: viaKey.current };
 
   return (
     <section
       aria-label="Colby at a desk, in voxels"
       className="relative z-10 h-dvh overflow-hidden bg-[#ebe6de] font-['Geist',system-ui,sans-serif] text-[#2a2622]"
-      style={PANEL_COLORS}
     >
       {hiddenVideo}
       <div ref={stageRef} className="desk-stage absolute inset-0 [&>canvas]:block [&>canvas]:h-full [&>canvas]:w-full" />
       <div
         className={cn(
           "pointer-events-none absolute left-[max(16px,env(safe-area-inset-left))] top-[max(16px,env(safe-area-inset-top))] z-[3] max-w-[min(420px,calc(100vw-32px))] transition-opacity",
-          (panelOpen || inProjects) && "opacity-0",
+          inProjects && "opacity-0",
         )}
       >
         <div className="w-[110px] sm:w-[150px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: MARK }} />
@@ -261,10 +253,10 @@ export function DeskScene() {
 
       {!inProjects && (
         <>
-          <div className={cn("pointer-events-none absolute bottom-[max(60px,calc(env(safe-area-inset-bottom)+42px))] left-1/2 z-[3] -translate-x-1/2 whitespace-nowrap font-mono text-[11px] font-medium sm:text-xs", muted, chrome)}>
+          <div className={cn("pointer-events-none absolute bottom-[max(60px,calc(env(safe-area-inset-bottom)+42px))] left-1/2 z-[3] -translate-x-1/2 whitespace-nowrap font-mono text-[11px] font-medium sm:text-xs", muted)}>
             {phone ? "swipe to look · pinch to zoom" : "drag to look · scroll to zoom"}
           </div>
-          <div className={cn("absolute bottom-[max(14px,env(safe-area-inset-bottom))] left-1/2 z-[3] flex -translate-x-1/2 items-center gap-3", chrome)}>
+          <div className="absolute bottom-[max(14px,env(safe-area-inset-bottom))] left-1/2 z-[3] flex -translate-x-1/2 items-center gap-3">
             <button type="button" onClick={() => setPicked(0)} className={cn(pill, "border-[rgba(42,38,34,0.3)] max-sm:min-h-11 max-sm:px-5")}>
               projects →
             </button>

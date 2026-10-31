@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export const INFO = "Hi, I'm Colby. I build small, sharp tools for the terminal and the Mac, from a beach in northern Portugal.";
-
 type LinkItem = { label: string; href: string };
 
 // the projects, in the order they show. A clip is a small muted loop in /work (re-recorded from demos/*.tape);
@@ -76,20 +74,6 @@ export const ABOUT_LINKS: LinkItem[] = [
 // shared bits of the page's quiet style: monospace UI text, a hairline pill border, muted ink that darkens on hover
 export const pill =
   "cursor-pointer rounded-full border border-[rgba(42,38,34,0.18)] bg-transparent px-3 py-1.5 font-mono text-xs text-[rgba(42,38,34,0.7)] transition-colors hover:border-[rgba(42,38,34,0.4)] hover:text-[#2a2622] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb9890]";
-
-export function LinkPills({ links, className }: { links: LinkItem[]; className?: string }) {
-  return (
-    <ul className={cn("flex flex-wrap gap-2", className)}>
-      {links.map(({ label, href }) => (
-        <li key={label}>
-          <a className={pill} href={href} {...(href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}>
-            {label}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 // ---- GitHub: the mark, the star, and the star counts ----------------------------------------------
 
