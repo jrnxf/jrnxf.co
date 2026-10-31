@@ -38,6 +38,8 @@ const WRITTEN: Project[] = [
   {
     name: "gh-eco",
     blurb: "A GitHub CLI extension for exploring the ecosystem: look anyone up and browse their profile, contributions and repositories in the terminal.",
+    // the clip is the demo from the gh-eco README, shrunk to a small mp4 (not recorded from a tape)
+    clip: "gh-eco",
     repo: "jrnxf/gh-eco",
     stars: 482,
   },
