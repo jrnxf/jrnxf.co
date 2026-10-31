@@ -12,7 +12,24 @@ function rnd(a, b, c = 0) {
 }
 function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
 
-const C = { fg: "#d8d6d0", dim: "#7d7b76", green: "#8fd18a", yellow: "#e6c27a", red: "#ef8a80", blue: "#8ab4f0", pink: "#fb9890" };
+// Colours of Cursor's default dark theme ("Cursor Dark"), taken from a copy of its theme file:
+// https://github.com/BioHazard786/cursor-theme-vscode/blob/main/themes/cursor-dark.json (MIT).
+// Editor and terminal backgrounds, the terminal's ANSI palette, selection and cursor, the tab and title
+// bar chrome, and the syntax colours its editor uses (keyword, string, function, number, variable).
+const CURSOR = {
+  editorBg: "#181818", terminalBg: "#141414", chromeBg: "#141414", border: "#e4e4e413",
+  fg: "#e4e4e4eb", faint: "#e4e4e442", comment: "#e4e4e45e", titleFg: "#e4e4e484",
+  selection: "#40404099", lineHighlight: "#262626", cursor: "#e4e4e4eb",
+  ansi: { black: "#242424", red: "#fc6b83", green: "#3fa266", yellow: "#d2943e", blue: "#81a1c1", magenta: "#b48ead", cyan: "#88c0d0", white: "#e4e4e4" },
+  bright: { red: "#fc6b83", green: "#70b489", yellow: "#f1b467", blue: "#87a6c4", magenta: "#b48ead", cyan: "#88c0d0" },
+  syntax: { keyword: "#82d2ce", string: "#e394dc", func: "#efb080", number: "#ebc88d", variable: "#d6d6dd", constant: "#aaa0fa" },
+};
+
+// the run colours the windows use, all from the theme above
+const C = {
+  fg: CURSOR.fg, dim: CURSOR.comment, green: CURSOR.bright.green, yellow: CURSOR.ansi.yellow, red: CURSOR.ansi.red,
+  blue: CURSOR.ansi.blue, pink: CURSOR.ansi.magenta, cyan: CURSOR.ansi.cyan, number: CURSOR.syntax.number,
+};
 
 // what a terminal can be doing; each returns its lines ([text, colour] runs) at time t into its life
 const KINDS = {
@@ -63,7 +80,7 @@ const KINDS = {
     let left = shown;
     for (let i = 0; i < Math.min(code.length, n - 1); i++) {
       const line = code[i], vis = line.slice(0, Math.max(0, left)); left -= line.length + 1;
-      out.push([[String(i + 1).padStart(3) + " ", C.dim], [vis, /function|return|const|await|for|async/.test(vis) ? C.blue : C.fg]]);
+      out.push([[String(i + 1).padStart(3) + " ", CURSOR.faint], [vis, /function|return|const|await|for|async/.test(vis) ? CURSOR.syntax.keyword : /\(|\)/.test(vis) ? CURSOR.syntax.variable : C.fg]]);
       if (left < 0) break;
     }
     out.push([["-- INSERT --", C.green]]);
@@ -103,25 +120,114 @@ function windowsAt(t) {
   return out.sort((a, b) => a.born - b.born);
 }
 
-export function paintTerminals(x, t) {
-  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1f1d27"); g.addColorStop(1, "#34293a");
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
-  x.fillStyle = "rgba(0,0,0,.3)"; x.fillRect(0, 0, W, 18);
+// ---- the wallpaper: a topographic map. Its contour lines are the iso-lines of one smooth heightfield
+// (the two hills below), traced with marching squares, so they never cross or touch ----
+const TOPO_BG = "#16181a", TOPO_LINE = "rgba(136,192,208,.14)";
+
+// every height in `values` is traced as a line; cell is the size in px of the squares the field is sampled on
+function contours(x, height, { values, cell = 2 }) {
+  const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(H / cell) + 1, hs = new Float32Array(cols * rows);
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) hs[j * cols + i] = height((i * cell) / W, (j * cell) / H);
+  x.strokeStyle = TOPO_LINE; x.lineWidth = 1; x.beginPath();
+  for (const level of values) {
+    for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
+      const tl = hs[j * cols + i], tr = hs[j * cols + i + 1], br = hs[(j + 1) * cols + i + 1], bl = hs[(j + 1) * cols + i];
+      const px = i * cell, py = j * cell, at = (a, b) => (level - a) / (b - a);
+      const pts = []; // crossings on the top, right, bottom and left edges, in that order
+      if ((tl > level) !== (tr > level)) pts.push([0, px + at(tl, tr) * cell, py]);
+      if ((tr > level) !== (br > level)) pts.push([1, px + cell, py + at(tr, br) * cell]);
+      if ((bl > level) !== (br > level)) pts.push([2, px + at(bl, br) * cell, py + cell]);
+      if ((tl > level) !== (bl > level)) pts.push([3, px, py + at(tl, bl) * cell]);
+      const seg = (p, q) => { x.moveTo(p[1], p[2]); x.lineTo(q[1], q[2]); };
+      if (pts.length === 2) seg(pts[0], pts[1]);
+      else if (pts.length === 4) {
+        // a saddle: the centre's side decides which corners are joined
+        const centre = (tl + tr + br + bl) / 4 > level;
+        if ((tl > level) === centre) { seg(pts[0], pts[1]); seg(pts[2], pts[3]); } else { seg(pts[0], pts[3]); seg(pts[1], pts[2]); }
+      }
+    }
+  }
+  x.stroke();
+}
+
+// the two hills (centre x, centre y, ring count, ring gap in px) as one heightfield
+const HILLS = [[200, 170, 11, 17], [500, 250, 9, 15]];
+// how many rings out a point lies on its hill: the radius over the ring gap, with a wobble that dies away
+// with distance, so far out the rings relax to even circles and never bunch up
+function ringsOut(px, py, cx, cy, gap) {
+  const dx = (px - cx) / 1.35, dy = py - cy, rho = Math.hypot(dx, dy), t = Math.atan2(dy, dx);
+  let k = rho / gap;
+  for (let i = 0; i < 5; i++) k = rho / (gap * (1 + (0.16 * Math.sin(3 * t + k * 0.35) + 0.09 * Math.sin(5 * t - k * 0.2)) / (1 + (k / 11) ** 4)));
+  return k;
+}
+// each hill is its ring count minus the rings out (negative past the last ring, so lines run on to every
+// edge); a soft maximum joins them without a crease
+export function topoHeight(u, v) {
+  const hs = HILLS.map(([cx, cy, n, gap]) => n - ringsOut(u * W, v * H, cx, cy, gap));
+  return Math.log(hs.reduce((a, h) => a + Math.exp(h / 0.6), 0)) * 0.6;
+}
+
+// drawn once, then copied onto the screen each time it is painted
+let wallpaper = null;
+function wallpaperCanvas() {
+  if (!wallpaper) {
+    wallpaper = document.createElement("canvas"); wallpaper.width = W; wallpaper.height = H;
+    const x = wallpaper.getContext("2d");
+    x.fillStyle = TOPO_BG; x.fillRect(0, 0, W, H);
+    contours(x, topoHeight, { values: Array.from({ length: 56 }, (_, i) => i - 45) });
+  }
+  return wallpaper;
+}
+
+// the bezel's own colour, painted as a thin frame round the screen so nothing of the picture can run
+// out to the edge of the plane and be filtered, sampled or seen against the bezel voxels
+const BEZEL = "#151517", FRAME = 4;
+
+// A project shown on the whole screen instead of the terminals: its clip, cover-fitted, or a labelled
+// placeholder until it has one. screen is { name, video? }.
+function paintProject(x, { name, video }) {
+  x.fillStyle = CURSOR.terminalBg; x.fillRect(0, 0, W, H);
+  if (video && video.readyState >= 2 && video.videoWidth) {
+    const s = Math.max(W / video.videoWidth, H / video.videoHeight), w = video.videoWidth * s, h = video.videoHeight * s;
+    x.drawImage(video, (W - w) / 2, (H - h) / 2, w, h);
+  } else {
+    x.fillStyle = CURSOR.faint; x.font = `14px ${MONO}`; x.textAlign = "center"; x.fillText(`${name} · clip coming`, W / 2, H / 2 + 5); x.textAlign = "left";
+  }
+}
+
+// screen.changedAt is when this project came up; for a moment the screen fades in from dark, in step with the
+// index opening beside it (same 220 ms and the same ease-out)
+const SWAP_MS = 220;
+
+export function paintTerminals(x, t, screen = null) {
+  if (screen) {
+    paintProject(x, screen);
+    const p = Math.min(1, (performance.now() - (screen.changedAt ?? 0)) / SWAP_MS);
+    if (p < 1) { x.fillStyle = CURSOR.terminalBg; x.globalAlpha = (1 - p) ** 3; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
+  } else paintDesktop(x, t);
+  x.fillStyle = BEZEL; x.fillRect(0, 0, W, FRAME); x.fillRect(0, H - FRAME, W, FRAME); x.fillRect(0, 0, FRAME, H); x.fillRect(W - FRAME, 0, FRAME, H);
+}
+
+function paintDesktop(x, t) {
+  x.drawImage(wallpaperCanvas(), 0, 0);
+  x.fillStyle = "rgba(20,20,20,.82)"; x.fillRect(0, 0, W, 18);
   const wins = windowsAt(t);
   wins.forEach((win, i) => {
     const top = i === wins.length - 1, e = 1 - (1 - win.scale) ** 3, s = 0.9 + 0.1 * e;
     const w = win.w * s, h = win.h * s, wx = win.x0 + (win.w - w) / 2, wy = win.y0 + (win.h - h) / 2;
     x.save(); x.globalAlpha = e;
     x.fillStyle = "rgba(0,0,0,.35)"; rr(x, wx + 3, wy + 6, w, h, 8); x.fill();
-    x.fillStyle = top ? "#121214" : "#18181b"; rr(x, wx, wy, w, h, 8); x.fill();
-    x.fillStyle = top ? "#26262b" : "#202024"; x.beginPath(); x.moveTo(wx + 8, wy); x.arcTo(wx + w, wy, wx + w, wy + 20, 8); x.lineTo(wx + w, wy + 20); x.lineTo(wx, wy + 20); x.arcTo(wx, wy, wx + w, wy, 8); x.closePath(); x.fill();
-    ["#ff5f57", "#febc2e", "#28c840"].forEach((c, k) => { x.fillStyle = top ? c : "#4a4a50"; x.beginPath(); x.arc(wx + 12 + k * 13, wy + 10, 3.6, 0, 7); x.fill(); });
-    x.fillStyle = "#8a8884"; x.font = `10px ${MONO}`; x.textAlign = "center"; x.fillText("zsh", wx + w / 2, wy + 14); x.textAlign = "left";
+    x.fillStyle = top ? CURSOR.terminalBg : CURSOR.editorBg; rr(x, wx, wy, w, h, 8); x.fill();
+    x.strokeStyle = CURSOR.border; x.lineWidth = 1; rr(x, wx + .5, wy + .5, w - 1, h - 1, 8); x.stroke();
+    x.fillStyle = CURSOR.chromeBg; x.beginPath(); x.moveTo(wx + 8, wy); x.arcTo(wx + w, wy, wx + w, wy + 20, 8); x.lineTo(wx + w, wy + 20); x.lineTo(wx, wy + 20); x.arcTo(wx, wy, wx + w, wy, 8); x.closePath(); x.fill();
+    x.fillStyle = CURSOR.border; x.fillRect(wx, wy + 20, w, 1);
+    ["#ff5f57", "#febc2e", "#28c840"].forEach((c, k) => { x.fillStyle = top ? c : CURSOR.faint; x.beginPath(); x.arc(wx + 12 + k * 13, wy + 10, 3.6, 0, 7); x.fill(); });
+    x.fillStyle = CURSOR.titleFg; x.font = `10px ${MONO}`; x.textAlign = "center"; x.fillText("zsh", wx + w / 2, wy + 14); x.textAlign = "left";
     x.beginPath(); x.rect(wx + 6, wy + 22, w - 12, h - 26); x.clip();
     x.font = `10.5px ${MONO}`;
     const rows = Math.floor((h - 30) / 14), lines = KINDS[win.kind](win.local, rows);
     lines.forEach((runs, r) => { let px = wx + 10; for (const [text, col] of runs) { x.fillStyle = col; x.fillText(text, px, wy + 36 + r * 14); px += x.measureText(text).width; } });
-    if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = C.fg; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
+    if (top && Math.floor(t * 2.4) % 2 === 0) { x.fillStyle = CURSOR.cursor; x.fillRect(wx + 10, wy + 27 + Math.min(lines.length, rows - 1) * 14, 6, 11); }
     x.restore();
   });
 }

@@ -56,6 +56,35 @@ export function parseVox(buf) {
 // -z toward the monitor; the quarter-voxel offsets keep the screen, clock and mark on their faces
 export const toScene = ([x, y, z]) => [(x - 0.25) * S, (z + 0.25) * S, -(y + 0.25) * S];
 
+// The front face of the voxels inside a box ([min, max] per axis, scene units): only the front-most layer
+// (largest z), and of that layer only the rows as wide as its widest, so a stand or lip poking above or
+// below the case is not part of the face. It is the box those voxels' outer faces span; the box given
+// is just there to pick the object out.
+export function frontFace(voxels, [x0, x1], [y0, y1], [z0, z1]) {
+  const cells = voxels.map(toScene).filter(([x, y, z]) => x > x0 && x < x1 && y > y0 && y < y1 && z > z0 && z < z1);
+  const zf = Math.max(...cells.map((c) => c[2])), front = cells.filter((c) => c[2] > zf - S / 2);
+  const rows = new Map();
+  for (const c of front) { const k = Math.round(c[1] / S); (rows.get(k) ?? rows.set(k, []).get(k)).push(c); }
+  const widest = Math.max(...[...rows.values()].map((r) => r.length));
+  const face = [...rows.values()].filter((r) => r.length >= widest * 0.8).flat();
+  const xs = face.map((c) => c[0]), ys = face.map((c) => c[1]);
+  return { x0: Math.min(...xs) - S / 2, x1: Math.max(...xs) + S / 2, y0: Math.min(...ys) - S / 2, y1: Math.max(...ys) + S / 2, z: zf + S / 2 };
+}
+
+// a screen laid on a face: inset on the left, right and top, and as tall as its aspect (width / height)
+// says, or down to the same inset at the bottom without one. It sits a hair in front of the face.
+export const SCREEN_LIFT = 0.01;
+export function screenRect(face, inset, aspect, bottom = inset) {
+  const w = face.x1 - face.x0 - 2 * inset, h = aspect ? w / aspect : face.y1 - face.y0 - inset - bottom;
+  return { x0: face.x0 + inset, x1: face.x1 - inset, y1: face.y1 - inset, y0: face.y1 - inset - h, w, h, z: face.z + SCREEN_LIFT };
+}
+
+// the two screens' faces in the scene, picked out of the voxels by the box each object sits in
+export const MONITOR_BOX = [[21, 41], [17, 29], [4, 5.8]];
+export const CLOCK_BOX = [[40, 46], [15.5, 18], [5, 9]];
+// the monitor's bezel: 0.3 on the sides and top, a little more along the bottom; the screen takes the rest of the face
+export const MONITOR_INSET = 0.3, MONITOR_BOTTOM = 0.6, CLOCK_INSET = 0.2;
+
 export const SKIN = ["#c98f68", "#b67b58"];
 const hex = ([r, g, b]) => "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 
@@ -75,23 +104,22 @@ export function splitParts(voxels, colour) {
   return parts;
 }
 
-// one InstancedMesh of the visible cells only: a cell buried on all six sides is skipped. Each voxel's
-// colour moves by a small stable amount, so flat colours read as voxels in the light.
+// one InstancedMesh of the visible cells only: a cell buried on all six sides is skipped. Every voxel
+// is flat in its palette colour; the light alone makes one face differ from the next.
 function voxMesh(THREE, cells, shadows, pivot = [0, 0, 0]) {
   const key = (a) => a.map((n) => Math.round(n / S)).join(",");
   const filled = new Set(cells.map((v) => key(v.at)));
   const shown = cells.filter(({ at: [x, y, z] }) => ![[S, 0, 0], [-S, 0, 0], [0, S, 0], [0, -S, 0], [0, 0, S], [0, 0, -S]].every(([a, b, c]) => filled.has(key([x + a, y + b, z + c]))));
   const n = shown.length;
   const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(S, S, S), new THREE.MeshLambertMaterial({ color: 0xffffff }), n);
-  const M = mesh.instanceMatrix.array, colors = new Float32Array(n * 3);
+  const M = mesh.instanceMatrix.array, colors = new Float32Array(n * 3), tint = new THREE.Color();
   shown.forEach(({ at, c }, q) => {
     const o = q * 16;
     M[o] = 1; M[o + 5] = 1; M[o + 10] = 1; M[o + 15] = 1;
     M[o + 12] = at[0] - pivot[0]; M[o + 13] = at[1] - pivot[1]; M[o + 14] = at[2] - pivot[2];
-    const [i, j, l] = at.map((t) => Math.round(t / S));
-    let h = Math.imul(i * 374761393 + j * 668265263 + l * 2147483647, 1274126177); h ^= h >>> 15;
-    const f = 1 + (((h >>> 0) / 4294967296) - 0.5) * 0.06, nn = parseInt(c.slice(1), 16);
-    colors[q * 3] = Math.min(1, (((nn >> 16) & 255) / 255) * f); colors[q * 3 + 1] = Math.min(1, (((nn >> 8) & 255) / 255) * f); colors[q * 3 + 2] = Math.min(1, ((nn & 255) / 255) * f);
+    // every voxel gets exactly its palette colour; the palette is sRGB, the shading works in linear light
+    tint.setHex(parseInt(c.slice(1), 16)).convertSRGBToLinear();
+    colors[q * 3] = tint.r; colors[q * 3 + 1] = tint.g; colors[q * 3 + 2] = tint.b;
   });
   mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
   mesh.instanceMatrix.needsUpdate = true;
@@ -115,7 +143,13 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   // the head sways a little as I read; each forearm pivots at its elbow, so the hands can type and
   // reach for the trackpad. A forearm's elbow is the middle of its back end.
   const head = new THREE.Group();
-  head.add(voxMesh(THREE, parts.head, shadows));
+  // the eyes are their own little meshes so a blink can swap them for skin: the blue voxels of the face, and the same cells in skin
+  // the lid is the shaded skin tone of the .vox (a touch darker than the face's own #c98f68), so a shut eye reads as a lid
+  const EYE = "#34485f", LID = "#b67b58";
+  const eyeCells = parts.head.filter((v) => v.c === EYE);
+  head.add(voxMesh(THREE, parts.head.filter((v) => v.c !== EYE), shadows));
+  const eyesOpen = voxMesh(THREE, eyeCells, shadows), eyesShut = voxMesh(THREE, eyeCells.map((v) => ({ ...v, c: LID })), shadows);
+  eyesShut.visible = false; head.add(eyesOpen, eyesShut);
   root.add(head);
   const forearms = [];
   for (const [side, sx] of [["left", -1], ["right", 1]]) {
@@ -128,41 +162,56 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
   }
 
   // screens: canvases drawn every frame or so, laid on the monitor's face and the clock's
-  const mon = canvasPlane(THREE, 640, 360, 18.2, 10.24); mon.mesh.position.set(31, 22.5, 5.8); root.add(mon.mesh);
+  // the monitor's plane is derived from the screen face of its voxels, inset inside the bezel, filling the face down to the chin
+  const monFace = frontFace(voxels, ...MONITOR_BOX), monRect = screenRect(monFace, MONITOR_INSET, undefined, MONITOR_BOTTOM);
+  const mon = canvasPlane(THREE, 640, 360, monRect.w, monRect.h); mon.mesh.position.set((monRect.x0 + monRect.x1) / 2, monRect.y0 + monRect.h / 2, monRect.z); root.add(mon.mesh);
   // the jrnxf mark on the back of the monitor, in a soft grey, read from behind
   root.add(markPlane(THREE, 7, "#8a8782", [31, 22.8, 4.44]));
 
   // lights: from over the viewer's shoulder, bright and even, so the figure reads in full
-  root.add(new THREE.HemisphereLight("#ffe9d2", backdrop === "white" ? "#a08c78" : "#2a2624", 0.3));
-  root.add(new THREE.AmbientLight("#ffe4c8", 0.05));
-  const key = new THREE.DirectionalLight("#ffcf9e", 0.58);
+  // white light and no tone mapping, so a palette colour reads as itself
+  root.add(new THREE.HemisphereLight("#ffffff", backdrop === "white" ? "#a8a8a8" : "#2a2a2a", 0.75));
+  const key = new THREE.DirectionalLight("#ffffff", 0.5);
   key.position.set(70, 52, 58); key.target.position.set(26, 0, 22); root.add(key, key.target);
   if (shadows) { key.castShadow = true; key.shadow.mapSize.set(2048, 2048); const s = key.shadow.camera; s.left = -40; s.right = 40; s.top = 40; s.bottom = -40; s.near = 1; s.far = 160; key.shadow.bias = -0.0015; key.shadow.normalBias = 0.06; }
 
   // the flip clock's face: real Lisbon time, each card flips when its digits change
-  const clock = canvasPlane(THREE, 256, 120, 4.6, 2.05); clock.mesh.position.set(43, 16.55, 8.02); root.add(clock.mesh);
-  let shown = "", flipAt = 0, prev = "";
+  // the plane is derived from the case's front-most layer of voxels, inset inside its edges and a hair
+  // in front of it. Its canvas has the plane's own aspect, with the digits drawn centred inside it.
+  const clockFace = frontFace(voxels, ...CLOCK_BOX), clockRect = screenRect(clockFace, CLOCK_INSET);
+  const CW = Math.round((120 * clockRect.w) / clockRect.h);
+  const clock = canvasPlane(THREE, CW, 120, clockRect.w, clockRect.h); clock.mesh.position.set((clockRect.x0 + clockRect.x1) / 2, clockRect.y0 + clockRect.h / 2, clockRect.z); root.add(clock.mesh);
+  let shown = ["", "", ""], prev = ["", "", ""], flipAt = [0, 0, 0];
   function drawClock(now, reduced) {
-    const t = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date()).replace(":", "");
-    if (t !== shown) { prev = shown || t; shown = t; flipAt = now; }
-    const x = clock.ctx, p = reduced ? 1 : Math.min(1, (now - flipAt) / 420);
-    x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, 256, 120);
-    x.font = "600 76px Helvetica Neue,Arial,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
-    const card = (i, cx) => {
-      const ch = shown[i], old = prev[i], flipping = ch !== old && p < 1;
-      x.fillStyle = "#151517"; x.fillRect(cx, 10, 56, 100);
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Lisbon", hour: "numeric", minute: "2-digit", hour12: true }).formatToParts(new Date());
+    const get = (type) => parts.find((q) => q.type === type)?.value ?? "";
+    const t = [get("hour").replace(/^0/, ""), get("minute"), get("dayPeriod").toUpperCase()];
+    const x = clock.ctx;
+    x.fillStyle = "#0b0b0c"; x.fillRect(0, 0, CW, 120);
+    x.save(); x.translate((CW - 256) / 2, 0);
+    x.textAlign = "center"; x.textBaseline = "middle";
+    const card = (i, cx, w) => {
+      if (t[i] !== shown[i]) { prev[i] = shown[i] || t[i]; shown[i] = t[i]; flipAt[i] = now; }
+      const ch = shown[i], old = prev[i], p = reduced ? 1 : Math.min(1, (now - flipAt[i]) / 420), flipping = ch !== old && p < 1, mid = cx + w / 2;
+      x.font = "600 76px Helvetica Neue,Arial,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillStyle = "#151517"; x.fillRect(cx, 10, w, 100);
       x.fillStyle = "#f4f2ee";
-      x.save(); x.beginPath(); x.rect(cx, 10, 56, 49); x.clip(); x.fillText(ch, cx + 28, 62); x.restore();
-      x.save(); x.beginPath(); x.rect(cx, 61, 56, 49); x.clip(); x.fillText(flipping && p < 0.5 ? old : ch, cx + 28, 62); x.restore();
+      x.save(); x.beginPath(); x.rect(cx, 10, w, 49); x.clip(); x.fillText(ch, mid, 62); x.restore();
+      x.save(); x.beginPath(); x.rect(cx, 61, w, 49); x.clip(); x.fillText(flipping && p < 0.5 ? old : ch, mid, 62); x.restore();
       if (flipping) {
         const k2 = Math.cos(p * Math.PI), top = k2 > 0;
-        x.save(); x.translate(cx, 60); x.scale(1, Math.abs(k2)); x.fillStyle = "#1c1c1f"; x.fillRect(0, top ? -50 : 0, 56, 50);
-        x.beginPath(); x.rect(0, top ? -50 : 0, 56, 50); x.clip(); x.fillStyle = "#f4f2ee"; x.fillText(top ? old : ch, 28, 2); x.restore();
+        x.save(); x.translate(cx, 60); x.scale(1, Math.abs(k2)); x.fillStyle = "#1c1c1f"; x.fillRect(0, top ? -50 : 0, w, 50);
+        x.beginPath(); x.rect(0, top ? -50 : 0, w, 50); x.clip(); x.fillStyle = "#f4f2ee"; x.fillText(top ? old : ch, w / 2, 2); x.restore();
       }
-      x.fillStyle = "#050506"; x.fillRect(cx, 59, 56, 2);
+      x.fillStyle = "#050506"; x.fillRect(cx, 59, w, 2);
     };
-    card(0, 4); card(1, 62); card(2, 138); card(3, 196);
+    card(0, 8, 112); card(1, 136, 112);
+    // AM/PM sits small in the hour card's bottom-left corner, like a real flip clock
+    shown[2] = t[2];
+    x.font = "700 15px Helvetica Neue,Arial,sans-serif"; x.textAlign = "left"; x.textBaseline = "alphabetic";
+    x.fillStyle = "#f4f2ee"; x.fillText(shown[2], 16, 102);
     x.fillStyle = "#101012"; x.fillRect(120, 0, 16, 120);
+    x.restore();
     clock.tex.needsUpdate = true;
   }
   // the mug is wherever the coffee is; steam rises from it in soft puffs that drift and fade
@@ -178,19 +227,25 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
       s2.m.scale.setScalar(0.7 + t * 1.1);
     }
   }
-  // click targets
-  const hit = {};
-  const target = (name, [x, y, z], [w, h, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false })); m.position.set(x, y, z); m.userData.name = name; root.add(m); hit[name] = m; };
-  target("mug", [mx + 0.2, my - 0.5, mz], [3.4, 2.8, 3]);
-  const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0xfb9890, transparent: true, opacity: 0.9 }));
-  outline.visible = false; root.add(outline);
-
   // ---------- motion ----------
-  let frames = 0, lastDraw = 0;
+  let frames = 0, lastDraw = 0, screen = null;
+  // a blink every 3-7 s, the eyes shut for about 135 ms, now and then twice in a row
+  const BLINK = 135;
+  let blinks = [], nextBlink = 3000 + Math.random() * 4000;
+  function blink(now) {
+    if (!blinks.length && now >= nextBlink) {
+      blinks = [[now, now + BLINK]];
+      if (Math.random() < 0.2) blinks.push([now + BLINK + 110, now + 2 * BLINK + 110]);
+      nextBlink = blinks[blinks.length - 1][1] + 3000 + Math.random() * 4000;
+    }
+    if (blinks.length && now > blinks[blinks.length - 1][1]) blinks = [];
+    const shut = blinks.some(([a, b]) => now >= a && now < b);
+    eyesOpen.visible = !shut; eyesShut.visible = shut;
+  }
   function update(now, reduced) {
     // some software WebGL drivers keep a new canvas texture blank after the scene is built; swapping in
     // a fresh texture once, after the first frames, makes the screen show reliably
-    if (++frames === 6) { const old = mon.mesh.material.map, t = new THREE.CanvasTexture(mon.canvas); t.encoding = THREE.sRGBEncoding; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; mon.mesh.material.map = t; mon.tex = t; mon.mesh.material.needsUpdate = true; old.dispose(); }
+    if (++frames === 6) { const old = mon.mesh.material.map, t = screenTexture(THREE, mon.canvas); mon.mesh.material.map = t; mon.tex = t; mon.mesh.material.needsUpdate = true; old.dispose(); }
     if (!reduced) {
       // typing in bursts: each hand taps on its own rhythm; every few seconds the right hand reaches for the trackpad
       const burst = Math.sin(now / 1900) > -0.35, reach = (now / 1000) % 9 > 7.4;
@@ -201,15 +256,14 @@ export function buildDesk(THREE, vox, { shadows = true, backdrop = "white" } = {
         f.g.rotation.y += ((toPad ? -0.22 : Math.sin(now / 700 + f.phase) * 0.025) - f.g.rotation.y) * 0.12;
       }
       head.position.x = Math.sin(now / 4200) * 0.18;
+      blink(now);
     }
-    if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000); mon.tex.needsUpdate = true; drawClock(now, reduced); }
+    if (now - lastDraw > 66) { lastDraw = now; paintTerminals(mon.ctx, reduced ? 6 : now / 1000, screen); mon.tex.needsUpdate = true; drawClock(now, reduced); }
     drawSteam(now, reduced);
   }
-  function highlight(name) {
-    if (!name) { outline.visible = false; return; }
-    const m = hit[name]; outline.visible = true; outline.position.copy(m.position); outline.scale.copy(new THREE.Vector3(m.geometry.parameters.width + 0.6, m.geometry.parameters.height + 0.6, m.geometry.parameters.depth + 0.6));
-  }
-  return { root, hit, update, highlight };
+  // a thinned scatter of the voxels, without the ground shadow, for framing the scene in the viewport
+  const framing = voxels.filter((_, i) => i % 5 === 0).map((vx) => new THREE.Vector3(...toScene(vx)));
+  return { root, update, framing, setScreen: (s) => { screen = s && { ...s, changedAt: performance.now() }; lastDraw = 0; } };
 }
 
 function markPlane(THREE, width, colour, [px, py, pz]) {
@@ -222,10 +276,17 @@ function markPlane(THREE, width, colour, [px, py, pz]) {
   mesh.position.set(px, py, pz); mesh.rotation.y = Math.PI;
   return mesh;
 }
+// A screen's texture is filtered with mipmaps and anisotropy, so fine detail (a dither, small type) is
+// averaged rather than sampled point by point and holds still while the camera moves.
+function screenTexture(THREE, canvas) {
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter; tex.anisotropy = 16;
+  return tex;
+}
 function canvasPlane(THREE, cw, ch, w, h) {
   const canvas = document.createElement("canvas"); canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  const tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+  const tex = screenTexture(THREE, canvas);
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
   return { canvas, ctx, tex, mesh };
 }
