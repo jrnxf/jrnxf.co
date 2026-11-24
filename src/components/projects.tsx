@@ -5,15 +5,24 @@ type LinkItem = { label: string; href: string };
 
 // the projects, in the order they show. A clip is a small muted loop in /work (re-recorded from demos/*.tape);
 // a project without one shows a labelled placeholder until its clip is made. stars is a snapshot of the
-// GitHub star count, shown until a fresh count arrives (see useStars). The list is ordered by that snapshot,
-// most stars first among the projects over SHOW_STARS_OVER, the rest after them in the order written; the
-// order never changes when live counts arrive.
-export type Project = { name: string; blurb: string; clip?: string; demo?: string; repo: string; stars: number };
-export const SHOW_STARS_OVER = 50;
+// GitHub star count, shown until a fresh count arrives (see useStars). Every public project shows its count. A
+// project with no repo is private: it shows no GitHub link and no count until it is published. The list
+// is ordered by that snapshot, most stars first among the projects over SORT_STARS_OVER, the rest after them in
+// the order written; the order never changes when live counts arrive.
+export type Project = {
+  name: string;
+  blurb: string;
+  clip?: string;
+  demo?: string;
+  repo?: string;
+  stars?: number;
+};
+const SORT_STARS_OVER = 50;
 const WRITTEN: Project[] = [
   {
     name: "thokr",
-    blurb: "A sleek typing test for the terminal, with visualized results and a log of how you did over time.",
+    blurb:
+      "A sleek typing test for the terminal, with visualized results and a log of how you did over time.",
     clip: "thokr",
     demo: "https://thokr.jrnxf.co",
     repo: "jrnxf/thokr",
@@ -21,25 +30,44 @@ const WRITTEN: Project[] = [
   },
   {
     name: "drip",
-    blurb: "One command shows a brief native card from your Mac's notch when a build or a coding agent finishes, then gets out of the way.",
+    blurb:
+      "One command shows a brief native card from your Mac's notch when a build or a coding agent finishes, then gets out of the way.",
+    // the clip is the demo from the drip README, cropped to 16:9 round the notch and shrunk to a small mp4
+    clip: "drip",
     demo: "https://drip.jrnxf.co",
     repo: "jrnxf/drip",
     stars: 1,
   },
   {
     name: "okfs",
-    blurb: "A web file browser in one binary. Run it in a folder and flip through every file inside.",
+    blurb:
+      "A web file browser in one binary. Run it in a folder and flip through every file inside.",
     demo: "https://okfs.jrnxf.co",
     repo: "jrnxf/okfs",
     stars: 1,
   },
   {
     name: "gh-eco",
-    blurb: "A GitHub CLI extension for exploring the ecosystem: look anyone up and browse their profile, contributions and repositories in the terminal.",
+    blurb:
+      "A GitHub CLI extension for exploring the ecosystem: look anyone up and browse their profile, contributions and repositories in the terminal.",
     // the clip is the demo from the gh-eco README, shrunk to a small mp4 (not recorded from a tape)
     clip: "gh-eco",
     repo: "jrnxf/gh-eco",
     stars: 482,
+  },
+  {
+    name: "kb",
+    blurb:
+      "A knowledge store for coding agents. Gotchas, decisions and open work outlive a /clear, and each note loads when it applies.",
+    repo: "jrnxf/kb",
+    stars: 2,
+  },
+  {
+    name: "rally",
+    blurb:
+      "Your coding agent writes an HTML page, you mark it up in the browser, and the agent gets your notes as text.",
+    // the clip is the demo from the rally README, padded on the left to 16:9 with the page's own white
+    clip: "rally",
   },
   {
     name: "une.haus",
@@ -49,7 +77,8 @@ const WRITTEN: Project[] = [
   },
   {
     name: "fsrx",
-    blurb: "Flow state reading in the terminal: pipe in any text and the start of each word is bolded so your eyes glide.",
+    blurb:
+      "Flow state reading in the terminal: pipe in any text and the start of each word is bolded so your eyes glide.",
     clip: "fsrx",
     demo: "https://fsrx.jrnxf.co",
     repo: "jrnxf/fsrx",
@@ -57,12 +86,17 @@ const WRITTEN: Project[] = [
   },
   {
     name: "vxr",
-    blurb: "Fast voxel scenes: a MagicaVoxel-compatible editor for the Mac and the browser. This desk was made in it.",
+    blurb:
+      "Fast voxel scenes: a MagicaVoxel-compatible editor for the Mac and the browser. This desk was made in it.",
     repo: "jrnxf/vxr",
     stars: 0,
   },
 ];
-export const PROJECTS: Project[] = [...WRITTEN].sort((a, b) => (b.stars > SHOW_STARS_OVER ? b.stars : 0) - (a.stars > SHOW_STARS_OVER ? a.stars : 0));
+export const PROJECTS: Project[] = [...WRITTEN].sort(
+  (a, b) =>
+    ((b.stars ?? 0) > SORT_STARS_OVER ? (b.stars ?? 0) : 0) -
+    ((a.stars ?? 0) > SORT_STARS_OVER ? (a.stars ?? 0) : 0),
+);
 export const ABOUT_LINKS: LinkItem[] = [
   { label: "github", href: "https://github.com/jrnxf" },
   { label: "email", href: "mailto:colby@jrnxf.co" },
@@ -100,11 +134,16 @@ const STAR_TTL = 6 * 60 * 60 * 1000;
 // numbers and nothing jumps) and is replaced by fresh counts from the GitHub API, cached in the browser for
 // hours. If the API refuses (rate limit, offline) the snapshot stays: never an error, never a made-up zero.
 export function useStars(): Record<string, number> {
-  const [stars, setStars] = useState<Record<string, number>>(() => Object.fromEntries(PROJECTS.map((p) => [p.name, p.stars])));
+  const [stars, setStars] = useState<Record<string, number>>(() =>
+    Object.fromEntries(PROJECTS.flatMap((p) => (p.repo ? [[p.name, p.stars ?? 0]] : []))),
+  );
   useEffect(() => {
     let cancelled = false;
     try {
-      const cached = JSON.parse(localStorage.getItem(STAR_KEY) ?? "null") as { at: number; stars: Record<string, number> } | null;
+      const cached = JSON.parse(localStorage.getItem(STAR_KEY) ?? "null") as {
+        at: number;
+        stars: Record<string, number>;
+      } | null;
       if (cached && Date.now() - cached.at < STAR_TTL) {
         setStars((cur) => ({ ...cur, ...cached.stars }));
         return;
@@ -112,26 +151,31 @@ export function useStars(): Record<string, number> {
     } catch {
       // a blocked or empty store just means no cache
     }
-    void Promise.all(
-      PROJECTS.map(async (p) => {
-        const res = await fetch(`https://api.github.com/repos/${p.repo}`, { headers: { Accept: "application/vnd.github+json" } });
+    // each repo stands alone: one refusal keeps that project's snapshot, not every project's
+    const pub = PROJECTS.filter((p) => p.repo);
+    void Promise.allSettled(
+      pub.map(async (p) => {
+        const res = await fetch(`https://api.github.com/repos/${p.repo}`, {
+          headers: { Accept: "application/vnd.github+json" },
+        });
         if (!res.ok) throw new Error(String(res.status));
         const body = (await res.json()) as { stargazers_count?: number };
         if (typeof body.stargazers_count !== "number") throw new Error("no count");
         return [p.name, body.stargazers_count] as const;
       }),
-    )
-      .then((pairs) => {
-        if (cancelled) return;
-        const fresh = Object.fromEntries(pairs);
-        setStars((cur) => ({ ...cur, ...fresh }));
-        try {
-          localStorage.setItem(STAR_KEY, JSON.stringify({ at: Date.now(), stars: fresh }));
-        } catch {
-          // no cache, fine
-        }
-      })
-      .catch(() => {});
+    ).then((results) => {
+      if (cancelled) return;
+      const pairs = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const fresh = Object.fromEntries(pairs);
+      setStars((cur) => ({ ...cur, ...fresh }));
+      // cache only a full set, so a refused repo is asked again on the next visit
+      if (pairs.length < pub.length) return;
+      try {
+        localStorage.setItem(STAR_KEY, JSON.stringify({ at: Date.now(), stars: fresh }));
+      } catch {
+        // no cache, fine
+      }
+    });
     return () => {
       cancelled = true;
     };
