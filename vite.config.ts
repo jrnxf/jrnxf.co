@@ -33,7 +33,8 @@ function fontDisplayOptional(): Plugin {
 export default defineConfig({
   staged: { "*": "vp check --fix" },
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    // the Workers runtime plugin rejects the ssr settings Vitest needs, and the unit tests never touch it
+    process.env.VITEST ? null : cloudflare({ viteEnvironment: { name: "ssr" } }),
     tanstackStart(),
     react(),
     tailwindcss(),

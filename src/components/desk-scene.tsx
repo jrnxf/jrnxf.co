@@ -3,34 +3,24 @@ import type React from "react";
 import type { DeskHandle } from "@/scene/deskapp.js";
 import { markSVG } from "@/scene/mark.js";
 import { cn } from "@/lib/utils";
-import {
-  ABOUT_LINKS,
-  GithubIcon,
-  PROJECTS,
-  SHOW_STARS_OVER,
-  StarIcon,
-  pill,
-  useStars,
-} from "@/components/projects";
+import { ABOUT_LINKS, GithubIcon, PROJECTS, StarIcon, pill, useStars } from "@/components/projects";
 
 const MARK = markSVG();
 
+// below this width a landscape screen (a tablet, a small laptop) shows the projects one at a time in a card,
+// like a portrait screen, since the list beside the monitor would sit over the clock on the desk
+const LIST_MIN_W = 1200;
 // the camera for the projects view: over his right shoulder, a little above his head, looking at the
 // monitor from about 20 degrees off its axis so the screen reads nearly face-on, and large in frame
-const MONITOR_W = 20; // the monitor's width in scene units, with a little margin, for fitting it across a narrow screen
-function projectsPose(aspect: number) {
-  const wide = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
-  if (aspect >= 1.1) return wide;
-  // portrait: back off until the monitor spans the width, and look lower so it sits in the top part of the
-  // screen, leaving the bottom for the index
-  const r = MONITOR_W / (2 * Math.tan((16 * Math.PI) / 180) * aspect);
-  const visible = 2 * r * Math.tan((16 * Math.PI) / 180);
-  return {
-    th: 0.75,
-    ph: 1.4,
-    r,
-    look: [33.5, 22.5 - visible * 0.3, 5.8] as [number, number, number],
-  };
+const LIST_POSE = { th: 0.37, ph: 1.4, r: 29, look: [38, 21.5, 5.8] as [number, number, number] };
+// with the card: the camera backs off until a w-unit wide span (the monitor is 20) fits across the screen
+// and h units fit down it, and `lift` of the visible height moves the monitor up, clear of the card
+function cardPose(aspect: number) {
+  const [w, h, lift, th, x] = aspect >= 1.1 ? [32, 27, 0.17, 0.6, 35] : [26, 15, 0.08, 0.75, 33.5];
+  const t = Math.tan((16 * Math.PI) / 180);
+  const r = Math.max(w / (2 * t * aspect), h / (2 * t));
+  const visible = 2 * r * t;
+  return { th, ph: 1.4, r, look: [x, 21.5 - visible * lift, 5.8] as [number, number, number] };
 }
 const WHEEL_STEP = 50; // wheel delta that moves to the next project
 const WHEEL_PAUSE = 450; // ms before the wheel can move it again
@@ -94,17 +84,14 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
     <nav
       aria-label="Projects"
       data-instant={instant ? "" : undefined}
-      className="absolute z-[4] flex flex-col gap-1 overflow-y-auto overscroll-contain max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[58dvh] max-sm:rounded-t-2xl max-sm:bg-[rgba(235,230,222,0.94)] max-sm:px-[max(16px,env(safe-area-inset-left))] max-sm:pb-[max(14px,env(safe-area-inset-bottom))] max-sm:pt-2 max-sm:shadow-[0_-12px_30px_-18px_rgba(42,38,34,0.35)] max-sm:backdrop-blur-sm sm:right-[max(28px,env(safe-area-inset-right))] sm:top-1/2 sm:max-h-[calc(100dvh-32px)] sm:w-[min(320px,30vw)] sm:-translate-y-1/2"
+      // top-aligned with short rows, so the list ends above the clock on the desk
+      className="absolute right-[max(28px,env(safe-area-inset-right))] top-[max(56px,9dvh)] z-[4] flex max-h-[calc(100dvh-72px)] w-[min(320px,30vw)] flex-col gap-1 overflow-y-auto overscroll-contain"
     >
-      {/* above the list on wider screens, where below it would sit over the clock on the desk */}
       <button
         type="button"
         onClick={close}
         style={{ "--i": PROJECTS.length } as React.CSSProperties}
-        className={cn(
-          pill,
-          "idx-in min-h-11 self-start max-sm:order-last max-sm:mt-3 max-sm:px-4 sm:mb-3 sm:min-h-0",
-        )}
+        className={cn(pill, "idx-in mb-3 self-start")}
       >
         back to the desk
       </button>
@@ -120,7 +107,7 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
               aria-current={i === index}
               aria-expanded={i === index}
               onClick={() => go(i)}
-              className="group flex min-h-11 w-full cursor-pointer items-center gap-3 py-2.5 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890] max-sm:text-[13px] [@media(max-height:480px)]:min-h-9 [@media(max-height:480px)]:py-1.5"
+              className="group flex min-h-8 w-full cursor-pointer items-center gap-3 py-1 text-left font-mono text-xs focus-visible:outline-2 focus-visible:outline-[#fb9890]"
             >
               <span
                 className={cn(
@@ -140,13 +127,13 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
               >
                 {p.name}
               </span>
-              {stars[p.name] > SHOW_STARS_OVER && (
+              {p.repo && (
                 <span
                   className={cn(
                     "ml-auto flex items-center gap-1 tabular-nums transition-colors duration-150",
                     i === index ? "text-[rgba(42,38,34,0.7)]" : "text-[rgba(42,38,34,0.4)]",
                   )}
-                  title={`${stars[p.name]} GitHub stars`}
+                  title={`${stars[p.name]} GitHub ${stars[p.name] === 1 ? "star" : "stars"}`}
                 >
                   <StarIcon />
                   {stars[p.name]}
@@ -159,60 +146,168 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
               inert={i !== index}
             >
               <div>
-                <div className="flex flex-col gap-3 pb-4 pl-8">
+                <div className="flex flex-col gap-1 pb-2 pl-8">
                   <p
                     className={cn(
                       serif,
-                      "idx-reveal text-[17px] leading-snug text-[rgba(42,38,34,0.88)]",
+                      "idx-reveal text-[15px] leading-snug text-[rgba(42,38,34,0.88)]",
                     )}
                     style={{ "--d": 0 } as React.CSSProperties}
                   >
                     {p.blurb}
                   </p>
-                  <div className="idx-reveal" style={{ "--d": 45 } as React.CSSProperties}>
-                    <div className="-ml-2.5 flex items-center gap-1 font-mono text-xs">
-                      <a
-                        href={`https://github.com/${p.repo}`}
-                        target="_blank"
-                        rel="noopener"
-                        aria-label={`${p.name} on GitHub`}
-                        title="GitHub"
-                        className={cn(
-                          quiet,
-                          "inline-flex h-11 w-11 items-center justify-center rounded-full sm:h-9 sm:w-9",
-                        )}
-                      >
-                        <GithubIcon className="h-[18px] w-[18px]" />
-                      </a>
-                      {p.demo && (
-                        <a
-                          href={p.demo}
-                          target="_blank"
-                          rel="noopener"
-                          className={cn(
-                            quiet,
-                            "inline-flex h-11 items-center gap-1 rounded-full px-2.5 sm:h-9",
-                          )}
-                        >
-                          demo
-                          <svg
-                            viewBox="0 0 12 12"
-                            aria-hidden="true"
-                            className="h-2.5 w-2.5 fill-none stroke-current"
-                            strokeWidth="1.4"
+                  {(p.repo || p.demo) && (
+                    <div className="idx-reveal" style={{ "--d": 45 } as React.CSSProperties}>
+                      <div className="-ml-2.5 flex items-center gap-1 font-mono text-xs">
+                        {p.repo && (
+                          <a
+                            href={`https://github.com/${p.repo}`}
+                            target="_blank"
+                            rel="noopener"
+                            aria-label={`${p.name} on GitHub`}
+                            title="GitHub"
+                            className={cn(
+                              quiet,
+                              "inline-flex h-9 w-9 items-center justify-center rounded-full",
+                            )}
                           >
-                            <path d="M4 2h6v6M10 2 3 9" />
-                          </svg>
-                        </a>
-                      )}
+                            <GithubIcon className="h-[18px] w-[18px]" />
+                          </a>
+                        )}
+                        {p.demo && (
+                          <a
+                            href={p.demo}
+                            target="_blank"
+                            rel="noopener"
+                            className={cn(
+                              quiet,
+                              "inline-flex h-9 items-center gap-1 rounded-full px-2.5",
+                            )}
+                          >
+                            demo
+                            <svg
+                              viewBox="0 0 12 12"
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5 fill-none stroke-current"
+                              strokeWidth="1.4"
+                            >
+                              <path d="M4 2h6v6M10 2 3 9" />
+                            </svg>
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           </li>
         ))}
       </ol>
+    </nav>
+  );
+}
+
+// portrait screens and smaller landscape ones: one project at a time in a bottom card, stepped with the arrows, the dots or a swipe
+function CarouselCard({ index, go, close }: Nav) {
+  const stars = useStars();
+  const p = PROJECTS[index];
+  const start = useRef<number | null>(null);
+  const arrow = cn(
+    quiet,
+    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-mono text-lg disabled:opacity-25",
+  );
+  return (
+    <nav
+      aria-label="Projects"
+      onPointerDown={(e) => (start.current = e.clientX)}
+      onPointerUp={(e) => {
+        const dx = start.current === null ? 0 : e.clientX - start.current;
+        start.current = null;
+        if (Math.abs(dx) > 40) go(index - Math.sign(dx));
+      }}
+      className="absolute inset-x-0 bottom-0 z-[4] mx-auto flex w-full max-w-[560px] touch-pan-y flex-col gap-2 rounded-t-2xl bg-[rgba(235,230,222,0.94)] px-[max(16px,env(safe-area-inset-left))] pb-[max(14px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_-18px_rgba(42,38,34,0.35)] backdrop-blur-sm"
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Previous project"
+          className={arrow}
+          disabled={index === 0}
+          onClick={() => go(index - 1)}
+        >
+          ‹
+        </button>
+        <div className="flex flex-1 items-center justify-center gap-3 font-mono text-[13px]">
+          <span className={muted}>{String(index + 1).padStart(2, "0")}</span>
+          <span>{p.name}</span>
+          {p.repo && (
+            <span className="flex items-center gap-1 tabular-nums text-[rgba(42,38,34,0.6)]">
+              <StarIcon />
+              {stars[p.name]}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          aria-label="Next project"
+          className={arrow}
+          disabled={index === PROJECTS.length - 1}
+          onClick={() => go(index + 1)}
+        >
+          ›
+        </button>
+      </div>
+      <p
+        className={cn(
+          serif,
+          "min-h-[3lh] text-center text-[17px] leading-snug text-[rgba(42,38,34,0.88)]",
+        )}
+      >
+        {p.blurb}
+      </p>
+      <div className="flex min-h-11 items-center justify-center gap-1 font-mono text-xs">
+        {p.repo && (
+          <a
+            href={`https://github.com/${p.repo}`}
+            target="_blank"
+            rel="noopener"
+            aria-label={`${p.name} on GitHub`}
+            className={cn(quiet, "inline-flex h-11 w-11 items-center justify-center rounded-full")}
+          >
+            <GithubIcon className="h-[18px] w-[18px]" />
+          </a>
+        )}
+        {p.demo && (
+          <a
+            href={p.demo}
+            target="_blank"
+            rel="noopener"
+            className={cn(quiet, "inline-flex h-11 items-center rounded-full px-2.5")}
+          >
+            demo ↗
+          </a>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={close} className={cn(pill, "min-h-11 px-4")}>
+          back to the desk
+        </button>
+        <div className="flex gap-1.5" aria-hidden="true">
+          {PROJECTS.map((q, i) => (
+            <button
+              key={q.name}
+              type="button"
+              tabIndex={-1}
+              onClick={() => go(i)}
+              className={cn(
+                "h-2 w-2 rounded-full",
+                i === index ? "bg-[#2a2622]" : "bg-[rgba(42,38,34,0.22)]",
+              )}
+            />
+          ))}
+        </div>
+      </div>
     </nav>
   );
 }
@@ -256,9 +351,15 @@ export function DeskScene() {
 
   const inProjects = picked !== null;
   // portrait or landscape, so the camera refits when a phone turns
+  // and whether the list fits beside the monitor or the card shows instead
   const [shape, setShape] = useState("");
+  const [card, setCard] = useState(false);
   useEffect(() => {
-    const onResize = () => setShape(innerWidth / innerHeight >= 1.1 ? "wide" : "tall");
+    const onResize = () => {
+      const wide = innerWidth / innerHeight >= 1.1;
+      setShape(wide ? "wide" : "tall");
+      setCard(!wide || innerWidth < LIST_MIN_W);
+    };
     onResize();
     addEventListener("resize", onResize);
     return () => removeEventListener("resize", onResize);
@@ -275,10 +376,10 @@ export function DeskScene() {
   useEffect(() => {
     const desk = deskRef.current;
     if (!desk) return;
-    if (inProjects) desk.flyTo(projectsPose(innerWidth / innerHeight));
-    else desk.flyTo();
+    if (!inProjects) desk.flyTo();
+    else desk.flyTo(card ? cardPose(innerWidth / innerHeight) : LIST_POSE);
     desk.setLocked(inProjects);
-  }, [inProjects, ready, shape]);
+  }, [inProjects, ready, shape, card]);
 
   // the wheel and the arrow keys step through the projects while the monitor is up
   useEffect(() => {
@@ -380,7 +481,7 @@ export function DeskScene() {
         </>
       )}
 
-      {inProjects && <IndexDisplay {...nav} />}
+      {inProjects && (card ? <CarouselCard {...nav} /> : <IndexDisplay {...nav} />)}
     </section>
   );
 }
