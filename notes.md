@@ -173,11 +173,11 @@ vp migrate                            # auto-migrates existing Vite project
 ### Configuration in `vite.config.ts`
 
 ```ts
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   staged: {
-    '*': 'vp check --fix', // run on all staged files before commit
+    "*": "vp check --fix", // run on all staged files before commit
   },
   fmt: {
     singleQuote: true, // match existing code style
