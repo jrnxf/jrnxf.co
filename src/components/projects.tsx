@@ -39,14 +39,6 @@ const WRITTEN: Project[] = [
     stars: 1,
   },
   {
-    name: "okfs",
-    blurb:
-      "A web file browser in one binary. Run it in a folder and flip through every file inside.",
-    demo: "https://okfs.jrnxf.co",
-    repo: "jrnxf/okfs",
-    stars: 1,
-  },
-  {
     name: "gh-eco",
     blurb:
       "A GitHub CLI extension for exploring the ecosystem: look anyone up and browse their profile, contributions and repositories in the terminal.",
@@ -56,22 +48,10 @@ const WRITTEN: Project[] = [
     stars: 482,
   },
   {
-    name: "kb",
-    blurb:
-      "A knowledge store for coding agents. Gotchas, decisions and open work outlive a /clear, and each note loads when it applies.",
-    repo: "jrnxf/kb",
-    stars: 2,
-  },
-  {
-    name: "rally",
-    blurb:
-      "Your coding agent writes an HTML page, you mark it up in the browser, and the agent gets your notes as text.",
-    // the clip is the demo from the rally README, padded on the left to 16:9 with the page's own white
-    clip: "rally",
-  },
-  {
     name: "une.haus",
     blurb: "A home for unicyclists: a trick encyclopedia, games, tournaments and a video vault.",
+    // the clip is a signed-in walk from the home page to users to ask, recorded in a browser (not from a tape)
+    clip: "unehaus",
     repo: "jrnxf/une.haus",
     stars: 4,
   },
@@ -83,13 +63,6 @@ const WRITTEN: Project[] = [
     demo: "https://fsrx.jrnxf.co",
     repo: "jrnxf/fsrx",
     stars: 310,
-  },
-  {
-    name: "vxr",
-    blurb:
-      "Fast voxel scenes: a MagicaVoxel-compatible editor for the Mac and the browser. This desk was made in it.",
-    repo: "jrnxf/vxr",
-    stars: 0,
   },
 ];
 export const PROJECTS: Project[] = [...WRITTEN].sort(

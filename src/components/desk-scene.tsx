@@ -84,8 +84,10 @@ function IndexDisplay({ index, go, close, instant }: Nav) {
     <nav
       aria-label="Projects"
       data-instant={instant ? "" : undefined}
-      // top-aligned with short rows, so the list ends above the clock on the desk
-      className="absolute right-[max(28px,env(safe-area-inset-right))] top-[max(56px,9dvh)] z-[4] flex max-h-[calc(100dvh-72px)] w-[min(320px,30vw)] flex-col gap-1 overflow-y-auto overscroll-contain"
+      // top-aligned with short rows, so the list ends above the clock on the desk. The bottom padding matches
+      // the rise of idx-in (--idx-rise): a row still on its way up counts toward the scroll size, and without
+      // the room the nav overflows and flashes a scrollbar while the list comes in
+      className="absolute right-[max(28px,env(safe-area-inset-right))] top-[max(56px,9dvh)] z-[4] flex max-h-[calc(100dvh-72px)] w-[min(320px,30vw)] flex-col gap-1 overflow-y-auto overscroll-contain pb-[var(--idx-rise)]"
     >
       <button
         type="button"
